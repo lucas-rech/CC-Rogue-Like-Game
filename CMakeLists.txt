@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CC_Rogue_Like_Game)
+project(CC_Rogue_Like_Game VERSION 0.0.2)
 
 set(CMAKE_CXX_STANDARD 20)
 
