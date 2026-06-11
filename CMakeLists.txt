@@ -20,13 +20,18 @@ set(SFML_BUILD_NETWORK FALSE CACHE INTERNAL "")
 # 4. Baixa e disponibiliza a SFML no seu projeto
 FetchContent_MakeAvailable(SFML)
 
-# 5. Cria o seu executável do Rogue-Like
-add_executable(CC_Rogue_Like_Game
-        src/main.cpp
+# 4. Adiciona todos os arquivos-fonte do seu jogo
+add_executable(CC_Rogue_Like_Game 
+    src/main.cpp
+    src/world/Level.cpp
+    src/graphics/TileMap.cpp
 )
 
 # Adiciona o diretório de includes
-target_include_directories(CC_Rogue_Like_Game PRIVATE include)
+target_include_directories(CC_Rogue_Like_Game PRIVATE
+    ${SFML_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include
+)
 
 # 6. Linka as bibliotecas da SFML ao seu jogo
 target_link_libraries(CC_Rogue_Like_Game sfml-graphics sfml-window sfml-system)
