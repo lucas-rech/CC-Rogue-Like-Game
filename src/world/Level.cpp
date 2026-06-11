@@ -2,16 +2,11 @@
 // Created by lucas on 11/06/2026.
 //
 #include "Level.hpp"
-#include "SFML/Graphics/Sprite.hpp"
 
+class Player;
 using namespace sf;
 
-#include "Level.hpp"
-#include "SFML/Graphics/Sprite.hpp"
-
-using namespace sf;
-
-void loadLevel(GameState& state, int levelIndex, sf::Sprite& playerSprite) {
+void loadLevel(GameState& state, int levelIndex, Player& player) {
     state.currentLevel = levelIndex;
     
     if (levelIndex == 1) {
@@ -22,7 +17,7 @@ void loadLevel(GameState& state, int levelIndex, sf::Sprite& playerSprite) {
         }
 
         // Reposiciona o jogador numa área livre
-        playerSprite.setPosition(6 * 16.0f, 10 * 16.0f);
+        player.setPosition(20 * 16.0f, 10 * 16.0f);
     }
     
 

@@ -62,6 +62,26 @@ bool TileMap::loadFromJson(const std::string& filename) {
             
             buildVertices(layer);
             layers.push_back(std::move(layer));
+        } else if (jLayer["type"] == "objectgroup") {
+            std::string lowerName = jLayer["name"];
+            for (auto& c : lowerName) c = tolower(c);
+            
+            // Verifica se a camada de objetos é destinada à colisão
+            if (lowerName.find("colisao") != std::string::npos || lowerName.find("colisão") != std::string::npos) {
+                if (jLayer.contains("objects")) {
+                    for (const auto& obj : jLayer["objects"]) {
+                        float ox = obj.value("x", 0.0f);
+                        float oy = obj.value("y", 0.0f);
+                        float ow = obj.value("width", 0.0f);
+                        float oh = obj.value("height", 0.0f);
+                        
+                        // Ignora pontos e objetos sem dimensão física
+                        if (ow > 0 && oh > 0) {
+                            collisionObjects.emplace_back(ox, oy, ow, oh);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -116,7 +136,15 @@ void TileMap::buildVertices(TileLayer& layer) {
 }
 
 bool TileMap::checkCollision(float worldX, float worldY) const {
-    const float GLOBAL_SCALE = 1.0f; // Removido o x4 pois a View já dá zoom
+    // 1. Checa contra os objetos livres de colisão (Sub-tile pixel perfect)
+    for (const auto& rect : collisionObjects) {
+        if (rect.contains(worldX, worldY)) {
+            return true;
+        }
+    }
+
+    // 2. Checa contra o grid de blocos normal
+    const float GLOBAL_SCALE = 1.0f;
     int cellX = static_cast<int>(worldX / (tileSize * GLOBAL_SCALE));
     int cellY = static_cast<int>(worldY / (tileSize * GLOBAL_SCALE));
 

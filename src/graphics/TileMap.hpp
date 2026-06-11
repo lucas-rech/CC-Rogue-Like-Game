@@ -22,7 +22,7 @@ struct TileLayer {
 class TileMap : public sf::Drawable, public sf::Transformable {
 public:
     TileMap();
-    ~TileMap() = default;
+    ~TileMap() override = default;
 
     bool loadFromJson(const std::string& filename);
 
@@ -43,12 +43,13 @@ public:
     int getTileSize() const { return tileSize; }
 
 private:
-    virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+    void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
     void buildVertices(TileLayer& layer);
     int findTilesetIndex(int tileId) const;
 
     std::vector<TileLayer> layers;
     std::vector<TilesetInfo> tilesets;
+    std::vector<sf::FloatRect> collisionObjects;
     int width;
     int height;
     int tileSize;

@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 
+#include "entities/hero/Player.hpp"
 #include "world/Level.hpp"
 #include "graphics/TileMap.hpp"
 
@@ -29,25 +30,33 @@ int main() {
     }
 
     // --- 2. CONFIGURAÇÕES DO JOGADOR ---
-    Sprite playerSprite;
-    playerSprite.setTexture(idleTexture);
+    Player player = Player(HeroClass::Vampire, 20 * 16.0f, 10 * 16.0f);
 
-    Clock animationClock;
-    int playerFrame = 0;
-    int totalFrames = 12;
-    int textureRow = 0;
-    float animationSpeed = 0.08f;
+    switch(player.getClass()) {
+        case(HeroClass::Warrior):
+            if (!player.loadTextures(
+            "assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/idle.png",
+            "assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/walk.png",
+            "assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/attack.png")) {
+                return -1;
+            }
+            break;
+        case(HeroClass::Vampire):
+            if (!player.loadTextures(
+                "assets/textures/characters/player/vampire/vampire_lvl1/Without_shadow/idle.png",
+                "assets/textures/characters/player/vampire/vampire_lvl1/Without_shadow/walk.png",
+                "assets/textures/characters/player/vampire/vampire_lvl1/Without_shadow/attack.png")) {
+                return -1;
+            }
+    }
 
-    // --- 3. CONFIGURAÇÕES DO MAPA ---
+
+    // --- CONFIGURAÇÕES DO MAPA ---
     GameState gameState = {0};
-    Sprite tileSprite;
-
-    // Carrega a matriz da Fase 1 e posiciona o jogador automaticamente
-    loadLevel(gameState, 1, playerSprite);
+    loadLevel(gameState, 1, player);
 
     // --- LOOP PRINCIPAL ---
     while (window.isOpen()) {
-        float movementSpeed = 1.5f;
         Event event;
         while (window.pollEvent(event)) {
             if (event.type == Event::Closed) window.close();
@@ -55,60 +64,19 @@ int main() {
         }
 
         // --- ENTRADA DE MOVIMENTAÇÃO ---
-        Vector2f movement(0.f, 0.f);
-        bool isMoving = false;
+        player.processInput(window);
 
-        if (Keyboard::isKeyPressed(Keyboard::D)) { movement.x += movementSpeed; textureRow = 128; isMoving = true; }
-        if (Keyboard::isKeyPressed(Keyboard::A)) { movement.x -= movementSpeed; textureRow = 64;  isMoving = true; }
-        if (Keyboard::isKeyPressed(Keyboard::S)) { movement.y += movementSpeed; textureRow = 0;   isMoving = true; }
-        if (Keyboard::isKeyPressed(Keyboard::W)) { movement.y -= movementSpeed; textureRow = 192; isMoving = true; }
+        FloatRect intendedHitBox = player.getNextHitbox();
 
-        // --- SISTEMA DE COLISÃO DO MAPA ---
-        if (isMoving) {
-            // Cria uma "hitbox" menor, focada nos pés do jogador
-            FloatRect nextHitbox = playerSprite.getGlobalBounds();
-            // Assumindo que o personagem ocupa o centro do sprite 64x64
-            nextHitbox.width = 12.f; 
-            nextHitbox.height = 8.f;
-            nextHitbox.left += movement.x + 26.f; // Centralizado no bloco de 64
-            nextHitbox.top += movement.y + 40.f;  // Pés do personagem
+        bool canMove = !checkCollision(intendedHitBox, gameState);
 
-            // Se o caminho estiver livre, aplica o movimento
-            if (!checkCollision(nextHitbox, gameState)) {
-                playerSprite.move(movement);
-            }
-        }
+        player.updateAndMove(canMove);
 
-        // --- CONTROLE DINÂMICO DOS FRAMES POR ESTADO E DIREÇÃO ---
-        if (isMoving) {
-            playerSprite.setTexture(walkTexture);
-            totalFrames = 6;
-            animationSpeed = 0.1f;
-        } else {
-            playerSprite.setTexture(idleTexture);
-            animationSpeed = 0.12f;
-            if (textureRow == 192) {
-                totalFrames = 4;
-            } else {
-                totalFrames = 12;
-            }
-        }
-
-        // --- CONTROLE DA ANIMAÇÃO DO SPRITE ---
-        if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
-            playerFrame++;
-            if (playerFrame >= totalFrames) playerFrame = 0;
-            animationClock.restart();
-        }
-        if (playerFrame >= totalFrames) playerFrame = 0; // Proteção extra
-
-        int rectLeft = playerFrame * 64;
-        playerSprite.setTextureRect(IntRect(rectLeft, textureRow, 64, 64));
 
         // --- ATUALIZAÇÃO DA CÂMERA ---
-        sf::Vector2f cameraPos = playerSprite.getPosition();
+        sf::Vector2f cameraPos = player.getCenterPosition();
         
-        // Limites da câmera para ela não sair das bordas do mapa (Camera Clamping)
+        // Limites da câmera para ela não sair das bordas do mapa
         float viewW = view.getSize().x;
         float viewH = view.getSize().y;
         float mapW = gameState.map.getWidth() * gameState.map.getTileSize();
@@ -132,20 +100,14 @@ int main() {
 
         view.setCenter(cameraPos);
 
-        // --- RENDERIZAÇÃO ---
         window.clear();
 
-        // Aplica a câmera
         window.setView(view);
 
-        // Desenha as camadas do Mapa (Chão e Objetos Base)
-        // Usamos drawAll para desenhar tudo que fica ATRÁS do jogador
         gameState.map.drawAll(window, RenderStates::Default);
 
-        // Desenha o Jogador
-        window.draw(playerSprite);
+        window.draw(player);
 
-        // Desenha as camadas de Frente (Folhas de árvores, telhados) por CIMA do jogador
         gameState.map.drawForeground(window, RenderStates::Default);
 
         window.display();

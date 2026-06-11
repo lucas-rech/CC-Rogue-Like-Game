@@ -25,6 +25,8 @@ add_executable(CC_Rogue_Like_Game
     src/main.cpp
     src/world/Level.cpp
     src/graphics/TileMap.cpp
+        src/entities/hero/Player.hpp
+        src/entities/hero/Player.cpp
 )
 
 # Adiciona o diretório de includes
