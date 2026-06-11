@@ -23,14 +23,6 @@ FetchContent_MakeAvailable(SFML)
 # 5. Cria o seu executável do Rogue-Like
 add_executable(CC_Rogue_Like_Game
         src/main.cpp
-        src/combat.cpp
-        src/entities.cpp
-        src/game.cpp
-        src/input.cpp
-        src/map.cpp
-        src/menu.cpp
-        src/render.cpp
-        src/utils.cpp
 )
 
 # Adiciona o diretório de includes

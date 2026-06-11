@@ -1,186 +1,120 @@
-#include "game.h"
-#include "input.h"
-#include "map.h"
-#include "menu.h"
-#include "render.h"
-#include "utils.h"
 
 #include <SFML/Graphics.hpp>
-#include <chrono>
 #include <iostream>
-#include <vector>
-#include <string>
-#include <cmath>
 
 using namespace std;
+using namespace sf;
 
-bool carregarTextura(sf::Texture& textura, const std::string& nomeArquivo) {
-    if (textura.loadFromFile("src/assets/" + nomeArquivo)) {
-        return true;
-    }
-    if (textura.loadFromFile("assets/" + nomeArquivo)) {
-        return true;
-    }
-    if (textura.loadFromFile(nomeArquivo)) {
-        return true;
-    }
-    return false;
-}
 
 int main() {
-    inicializarAleatorio();
+    ContextSettings settings;
+    settings.antialiasingLevel = 8;
+    RenderWindow window(VideoMode(1920, 1080), "Rogue Like Game", Style::Fullscreen, settings);
+    window.setFramerateLimit(60); // Fundamental para controlar a velocidade do jogo
 
-    // 1. Inicializa a janela grafica do jogo SFML (Largura: 1920, Altura: 1080)
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "CC Rogue-Like Dungeon - SFML Edition", sf::Style::Titlebar | sf::Style::Close);
-    window.setFramerateLimit(60);
+    View view(FloatRect(0, 0, 480.f, 270.f));
 
-    // 2. Tenta carregar uma fonte padrao do Windows
-    sf::Font font;
-    bool fonteCarregada = false;
-    std::vector<std::string> caminhosFontes = {
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/consolas.ttf",
-        "C:/Windows/Fonts/segoeui.ttf",
-        "C:/Windows/Fonts/cour.ttf",
-        "arial.ttf"
-    };
+    // --- CARREGAMENTO DE TEXTURAS ---
+    Texture idleTexture;
+    Texture walkTexture;
 
-    for (const auto& caminho : caminhosFontes) {
-        if (font.loadFromFile(caminho)) {
-            fonteCarregada = true;
-            break;
-        }
-    }
-
-    if (!fonteCarregada) {
-        std::cerr << "Erro: Nao foi possivel carregar nenhuma fonte de texto do sistema!\n";
+    if (!idleTexture.loadFromFile("assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/idle.png") ||
+        !walkTexture.loadFromFile("assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/walk.png")) {
+        cout << "Erro ao carregar as texturas!" << std::endl;
         return -1;
     }
 
-    // 2.5. Inicializa as texturas de Orcs e do Heroi (Idle e Ataque)
-    TexturasJogo texturas;
-    texturas.jogadorCarregado = carregarTextura(texturas.jogador, "enemies/Orc1/Without_shadow/orc1_idle_without_shadow.png");
-    texturas.comumCarregado = carregarTextura(texturas.inimigoComum, "enemies/Orc2/Without_shadow/orc2_idle_without_shadow.png");
-    texturas.perseguidorCarregado = carregarTextura(texturas.inimigoPerseguidor, "enemies/Orc3/Without_shadow/orc3_idle_without_shadow.png");
-    texturas.tanqueCarregado = carregarTextura(texturas.inimigoTanque, "enemies/Orc3/Without_shadow/orc3_idle_without_shadow.png");
-    texturas.bossCarregado = carregarTextura(texturas.boss, "enemies/Orc3/Without_shadow/orc3_idle_without_shadow.png");
+    // Configurações iniciais do Sprite
+    Sprite playerSprite;
+    playerSprite.setTexture(idleTexture);
+    playerSprite.setPosition(100.f, 100.f);
 
-    texturas.jogadorAtaqueCarregado = carregarTextura(texturas.jogadorAtaque, "enemies/Orc1/Without_shadow/orc1_attack_without_shadow.png");
-    texturas.comumAtaqueCarregado = carregarTextura(texturas.comumAtaque, "enemies/Orc2/Without_shadow/orc2_attack_without_shadow.png");
-    texturas.perseguidorAtaqueCarregado = carregarTextura(texturas.perseguidorAtaque, "enemies/Orc3/Without_shadow/orc3_attack_without_shadow.png");
-    texturas.tanqueAtaqueCarregado = carregarTextura(texturas.tanqueAtaque, "enemies/Orc3/Without_shadow/orc3_attack_without_shadow.png");
-    texturas.bossAtaqueCarregado = carregarTextura(texturas.bossAtaque, "enemies/Orc3/Without_shadow/orc3_attack_without_shadow.png");
+    Clock animationClock;
+    int playerFrame = 0;
+    int totalFrames = 12;
+    int textureRow = 0;
 
-    // 3. Inicializa o estado do jogo
-    Jogo jogo;
-    jogo.estado = EstadoJogo::MENU;
-    jogo.rodando = false;
+    float animationSpeed = 1.f;
+    float movementSpeed = 3.0f;
 
-    sf::Clock frameClock;
-
-    // --- GAME LOOP ---
     while (window.isOpen()) {
-        float dt = frameClock.restart().asSeconds();
-
-        // Atualiza temporizadores de animacao de ataque
-        if (jogo.estado == EstadoJogo::JOGANDO) {
-            if (jogo.jogador.tempoAtaque > 0.0f) {
-                jogo.jogador.tempoAtaque -= dt;
-            }
-            for (auto& inimigo : jogo.mapa.inimigos) {
-                if (inimigo.tempoAtaque > 0.0f) {
-                    inimigo.tempoAtaque -= dt;
-                }
-            }
-        }
-        
-        // --- 1. PROCESSAR ENTRADAS / EVENTOS ---
-        sf::Event event;
+        Event event;
         while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+            if (event.type == Event::Closed)
                 window.close();
-            }
 
-            if (event.type == sf::Event::KeyPressed) {
-                // Eventos dependendo do Estado do Jogo
-                if (jogo.estado == EstadoJogo::MENU) {
-                    if (event.key.code == sf::Keyboard::Num1 || event.key.code == sf::Keyboard::Numpad1) {
-                        inicializarJogo(jogo);
-                        jogo.estado = EstadoJogo::JOGANDO;
-                    } else if (event.key.code == sf::Keyboard::Num2 || event.key.code == sf::Keyboard::Numpad2) {
-                        jogo.estado = EstadoJogo::COMO_JOGAR;
-                    } else if (event.key.code == sf::Keyboard::Num3 || event.key.code == sf::Keyboard::Numpad3) {
-                        jogo.estado = EstadoJogo::EXPLICACAO_ITENS;
-                    } else if (event.key.code == sf::Keyboard::Num4 || event.key.code == sf::Keyboard::Numpad4) {
-                        jogo.estado = EstadoJogo::EXPLICACAO_PONTUACAO;
-                    } else if (event.key.code == sf::Keyboard::Q || event.key.code == sf::Keyboard::Escape) {
-                        window.close();
-                    }
-                }
-                else if (jogo.estado == EstadoJogo::COMO_JOGAR || 
-                         jogo.estado == EstadoJogo::EXPLICACAO_ITENS || 
-                         jogo.estado == EstadoJogo::EXPLICACAO_PONTUACAO) {
-                    // Qualquer tecla pressionada retorna ao menu principal
-                    jogo.estado = EstadoJogo::MENU;
-                }
-                else if (jogo.estado == EstadoJogo::JOGANDO) {
-                    char tecla = mapearTeclaSFML(event.key.code);
-                    if (tecla != 0) {
-                        processarEntrada(jogo, tecla);
-                        
-                        // Se o jogador usou comando de sair/morreu
-                        if (!jogo.rodando) {
-                            jogo.estado = EstadoJogo::TELA_FINAL;
-                        }
-                    }
-                }
-                else if (jogo.estado == EstadoJogo::TELA_FINAL) {
-                    // Qualquer tecla pressionada retorna ao menu
-                    jogo.estado = EstadoJogo::MENU;
-                }
+            if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape)
+                window.close();
+        }
+
+        // --- ENTRADA DE MOVIMENTAÇÃO ---
+        Vector2f movement(0.f, 0.f);
+        bool isMoving = false;
+
+        if (Keyboard::isKeyPressed(Keyboard::D)) {
+            movement.x += movementSpeed;
+            textureRow = 128; // Linha da direita
+            isMoving = true;
+        }
+        if (Keyboard::isKeyPressed(Keyboard::A)) {
+            movement.x -= movementSpeed;
+            textureRow = 64;  // Linha da esquerda
+            isMoving = true;
+        }
+        if (Keyboard::isKeyPressed(Keyboard::S)) {
+            movement.y += movementSpeed;
+            textureRow = 0;   // Linha de frente (baixo)
+            isMoving = true;
+        }
+        if (Keyboard::isKeyPressed(Keyboard::W)) {
+            movement.y -= movementSpeed;
+            textureRow = 192; // Linha de costas (cima)
+            isMoving = true;
+        }
+
+        // Aplica o movimento na posição do sprite
+        playerSprite.move(movement);
+
+        if (isMoving) {
+            playerSprite.setTexture(walkTexture);
+            totalFrames = 6;          // O walk mantém 6 frames em todas as direções
+            animationSpeed = 0.1f;
+        } else {
+            playerSprite.setTexture(idleTexture);
+            animationSpeed = 0.12f;
+
+            // Verifica a direção (linha da textura) para definir os frames do Idle
+            if (textureRow == 192) {
+                animationSpeed = 0.3f;
+                totalFrames = 4;      // Idle para CIMA (Costas) tem apenas 4 frames
+            } else {
+                totalFrames = 12;     // As outras direções de Idle têm 16 frames
             }
         }
 
-        // --- 2. ATUALIZAÇÃO DO JOGO EM TEMPO REAL ---
-        if (jogo.estado == EstadoJogo::JOGANDO && jogo.rodando) {
-            float dx = 0.f;
-            float dy = 0.f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) dy -= 1.f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) dy += 1.f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) dx -= 1.f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) dx += 1.f;
+        // --- CONTROLE DA ANIMAÇÃO ---
+        if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
+            playerFrame++;
 
-            // Normaliza o vetor de direção do movimento
-            float len = std::sqrt(dx*dx + dy*dy);
-            if (len > 0.f) {
-                dx /= len;
-                dy /= len;
+            if (playerFrame >= totalFrames) {
+                playerFrame = 0;
             }
-
-            atualizarJogoRealTime(jogo, dt, dx, dy);
-
-            if (!jogo.rodando) {
-                jogo.estado = EstadoJogo::TELA_FINAL;
-            }
+            animationClock.restart();
         }
 
-        // --- 3. RENDERIZAR NA TELA ---
-        window.clear();
-
-        if (jogo.estado == EstadoJogo::MENU) {
-            renderizarMenuSFML(window, font);
-        } else if (jogo.estado == EstadoJogo::COMO_JOGAR) {
-            renderizarComoJogarSFML(window, font);
-        } else if (jogo.estado == EstadoJogo::EXPLICACAO_ITENS) {
-            renderizarExplicacaoItensSFML(window, font);
-        } else if (jogo.estado == EstadoJogo::EXPLICACAO_PONTUACAO) {
-            renderizarExplicacaoPontuacaoSFML(window, font);
-        } else if (jogo.estado == EstadoJogo::JOGANDO) {
-            renderizarJogoSFML(window, jogo, font, texturas);
-        } else if (jogo.estado == EstadoJogo::TELA_FINAL) {
-            mostrarTelaFinalSFML(window, jogo, font);
+        // Proteção crucial para quando o jogador solta a tecla:
+        // Se ele estava andando (frame 5) e para olhando para cima (onde o máximo é 4),
+        // reiniciamos imediatamente para o frame 0 para evitar ler texturas inexistentes.
+        if (playerFrame >= totalFrames) {
+            playerFrame = 0;
         }
 
+        int rectLeft = playerFrame * 64;
+        playerSprite.setTextureRect(IntRect(rectLeft, textureRow, 64, 64));
+
+        window.setView(view);
+        window.clear(Color::Black);
+        window.draw(playerSprite);
         window.display();
     }
 
