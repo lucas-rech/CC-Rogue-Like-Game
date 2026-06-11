@@ -24,15 +24,19 @@ public:
     TileMap();
     ~TileMap() = default;
 
-    // Carrega o arquivo JSON/TMJ gerado pelo Tiled
     bool loadFromJson(const std::string& filename);
 
     // Retorna true se a posição x,y colidir com algum bloco sólido
     bool checkCollision(float worldX, float worldY) const;
 
+    // Desenha as camadas normais (chão, objetos)
+    void drawAll(sf::RenderTarget& target, sf::RenderStates states = sf::RenderStates::Default) const;
+    
+    // Desenha as camadas que ficam na frente do jogador (folhas, telhados)
+    void drawForeground(sf::RenderTarget& target, sf::RenderStates states = sf::RenderStates::Default) const;
+
     // Renderiza as camadas
     void drawLayer(sf::RenderTarget& target, sf::RenderStates states, const std::string& layerName) const;
-    void drawAll(sf::RenderTarget& target, sf::RenderStates states) const;
 
     int getWidth() const { return width; }
     int getHeight() const { return height; }

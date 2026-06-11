@@ -12,8 +12,11 @@ int main() {
     RenderWindow window(VideoMode(1920, 1080), "Rogue Like Game", Style::Fullscreen, settings);
     window.setFramerateLimit(60);
 
-    // Zoom na tela
-    View view(FloatRect(0, 0, 480.f, 270.f));
+
+    float viewWidth = 640.f;
+    float viewHeight = 360.f;
+
+    View view(FloatRect(0, 0, viewWidth, viewHeight));
 
     // --- 1. CARREGAMENTO DE TEXTURAS ---
     Texture idleTexture;
@@ -34,7 +37,6 @@ int main() {
     int totalFrames = 12;
     int textureRow = 0;
     float animationSpeed = 0.08f;
-    float movementSpeed = 1.5f; // Reduzido pois o mapa não está mais esticado 4x
 
     // --- 3. CONFIGURAÇÕES DO MAPA ---
     GameState gameState = {0};
@@ -45,6 +47,7 @@ int main() {
 
     // --- LOOP PRINCIPAL ---
     while (window.isOpen()) {
+        float movementSpeed = 1.5f;
         Event event;
         while (window.pollEvent(event)) {
             if (event.type == Event::Closed) window.close();
@@ -103,28 +106,47 @@ int main() {
         playerSprite.setTextureRect(IntRect(rectLeft, textureRow, 64, 64));
 
         // --- ATUALIZAÇÃO DA CÂMERA ---
-        view.setCenter(playerSprite.getPosition());
+        sf::Vector2f cameraPos = playerSprite.getPosition();
+        
+        // Limites da câmera para ela não sair das bordas do mapa (Camera Clamping)
+        float viewW = view.getSize().x;
+        float viewH = view.getSize().y;
+        float mapW = gameState.map.getWidth() * gameState.map.getTileSize();
+        float mapH = gameState.map.getHeight() * gameState.map.getTileSize();
+
+        // Trava no eixo X
+        if (mapW < viewW) {
+            cameraPos.x = mapW / 2.0f; // Mapa menor que a tela, centraliza à força
+        } else {
+            if (cameraPos.x < viewW / 2.0f) cameraPos.x = viewW / 2.0f;
+            else if (cameraPos.x > mapW - viewW / 2.0f) cameraPos.x = mapW - viewW / 2.0f;
+        }
+
+        // Trava no eixo Y
+        if (mapH < viewH) {
+            cameraPos.y = mapH / 2.0f; // Mapa menor que a tela, centraliza à força
+        } else {
+            if (cameraPos.y < viewH / 2.0f) cameraPos.y = viewH / 2.0f;
+            else if (cameraPos.y > mapH - viewH / 2.0f) cameraPos.y = mapH - viewH / 2.0f;
+        }
+
+        view.setCenter(cameraPos);
 
         // --- RENDERIZAÇÃO ---
-        window.clear(Color(163, 179, 21)); // Cor #a3b315
+        window.clear();
 
         // Aplica a câmera
         window.setView(view);
 
-        // 1. Desenha as camadas de Chão
-        // Não escalamos o mapa aqui, pois a View já aplica um zoom de 4x (1920x1080 / 480x270)
-        gameState.map.drawLayer(window, RenderStates::Default, "Chao Base");
-        gameState.map.drawLayer(window, RenderStates::Default, "Chao");
-        gameState.map.drawLayer(window, RenderStates::Default, "Chao I");
+        // Desenha as camadas do Mapa (Chão e Objetos Base)
+        // Usamos drawAll para desenhar tudo que fica ATRÁS do jogador
+        gameState.map.drawAll(window, RenderStates::Default);
 
-        // 2. Desenha o Jogador
+        // Desenha o Jogador
         window.draw(playerSprite);
 
-        // 3. Desenha as camadas de Objetos (Por cima do jogador temporariamente para teste)
-        gameState.map.drawLayer(window, RenderStates::Default, "Montanhas");
-        gameState.map.drawLayer(window, RenderStates::Default, "Montanhas II");
-        gameState.map.drawLayer(window, RenderStates::Default, "Arvores I");
-        gameState.map.drawLayer(window, RenderStates::Default, "Arvores II");
+        // Desenha as camadas de Frente (Folhas de árvores, telhados) por CIMA do jogador
+        gameState.map.drawForeground(window, RenderStates::Default);
 
         window.display();
     }

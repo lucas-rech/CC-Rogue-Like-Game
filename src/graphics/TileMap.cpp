@@ -156,12 +156,31 @@ void TileMap::drawAll(sf::RenderTarget& target, sf::RenderStates states) const {
         std::string lowerName = layer.name;
         for (auto& c : lowerName) c = tolower(c);
         if (lowerName.find("colisao") != std::string::npos || lowerName.find("colisão") != std::string::npos) continue;
+        if (lowerName.find("frente") != std::string::npos || lowerName.find("topo") != std::string::npos || lowerName.find("acima") != std::string::npos) continue;
 
         for (const auto& pair : layer.verticesPerTileset) {
             int tsIndex = pair.first;
             sf::RenderStates st = states;
             st.texture = &tilesets[tsIndex].texture;
             target.draw(pair.second, st);
+        }
+    }
+}
+
+void TileMap::drawForeground(sf::RenderTarget& target, sf::RenderStates states) const {
+    states.transform *= getTransform();
+    for (const auto& layer : layers) {
+        if (!layer.visible) continue;
+        
+        std::string lowerName = layer.name;
+        for (auto& c : lowerName) c = tolower(c);
+        if (lowerName.find("frente") != std::string::npos || lowerName.find("topo") != std::string::npos || lowerName.find("acima") != std::string::npos) {
+            for (const auto& pair : layer.verticesPerTileset) {
+                int tsIndex = pair.first;
+                sf::RenderStates st = states;
+                st.texture = &tilesets[tsIndex].texture;
+                target.draw(pair.second, st);
+            }
         }
     }
 }
