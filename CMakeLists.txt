@@ -57,3 +57,16 @@ if(WIN32)
             $<TARGET_FILE_DIR:CC_Rogue_Like_Game>
     )
 endif()
+
+# 8. Copiar pastas de recursos (Assets e World) para o diretorio de build
+add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/src/assets"
+    "$<TARGET_FILE_DIR:CC_Rogue_Like_Game>/assets"
+)
+
+add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/src/world"
+    "$<TARGET_FILE_DIR:CC_Rogue_Like_Game>/src/world"
+)

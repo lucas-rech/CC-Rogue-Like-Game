@@ -19,15 +19,6 @@ int main() {
 
     View view(FloatRect(0, 0, viewWidth, viewHeight));
 
-    // --- 1. CARREGAMENTO DE TEXTURAS ---
-    Texture idleTexture;
-    Texture walkTexture;
-
-    if (!idleTexture.loadFromFile("assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/idle.png") ||
-        !walkTexture.loadFromFile("assets/textures/characters/player/warrior/warrior_lvl1/Without_shadow/walk.png")) {
-        std::cout << "Erro ao carregar as texturas do jogador!" << std::endl;
-        return -1;
-    }
 
     // --- 2. CONFIGURAÇÕES DO JOGADOR ---
     Player player = Player(HeroClass::Vampire, 20 * 16.0f, 10 * 16.0f);
