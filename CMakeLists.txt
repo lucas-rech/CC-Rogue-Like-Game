@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CC_Rogue_Like_Game VERSION 0.0.2)
+project(CC_Rogue_Like_Game VERSION 0.0.3)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -14,7 +14,7 @@ FetchContent_Declare(
 )
 
 # 3. Desativa módulos que você não vai usar agora (acelera a compilação)
-set(SFML_BUILD_AUDIO FALSE CACHE INTERNAL "")
+set(SFML_BUILD_AUDIO TRUE CACHE INTERNAL "")
 set(SFML_BUILD_NETWORK FALSE CACHE INTERNAL "")
 
 # 4. Baixa e disponibiliza a SFML no seu projeto
@@ -27,6 +27,8 @@ add_executable(CC_Rogue_Like_Game
     src/graphics/TileMap.cpp
         src/entities/hero/Player.hpp
         src/entities/hero/Player.cpp
+        src/entities/enemies/Enemy.hpp
+        src/entities/enemies/Enemy.cpp
 )
 
 # Adiciona o diretório de includes
@@ -36,7 +38,7 @@ target_include_directories(CC_Rogue_Like_Game PRIVATE
 )
 
 # 6. Linka as bibliotecas da SFML ao seu jogo
-target_link_libraries(CC_Rogue_Like_Game sfml-graphics sfml-window sfml-system)
+target_link_libraries(CC_Rogue_Like_Game sfml-graphics sfml-window sfml-system sfml-audio)
 
 # 7. COPIAR TODAS AS DLLs NECESSÁRIAS AUTOMATICAMENTE (Para rodar o .exe por fora)
 if(WIN32)
@@ -45,10 +47,11 @@ if(WIN32)
 
     add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            # DLLs da SFML geradas na compilação
             $<TARGET_FILE:sfml-graphics>
             $<TARGET_FILE:sfml-window>
             $<TARGET_FILE:sfml-system>
+            $<TARGET_FILE:sfml-audio>
+            "${SFML_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
             # DLLs do Compilador (MinGW) que o Windows exige
             "${COMPILER_DIR}/libgcc_s_seh-1.dll"
             "${COMPILER_DIR}/libstdc++-6.dll"

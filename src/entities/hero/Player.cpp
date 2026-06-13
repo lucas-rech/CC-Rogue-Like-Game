@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <SFML/Audio.hpp>
+
 
 Player::Player(const HeroClass type, const float startX, const float startY) {
     heroClass = type;
@@ -18,15 +20,23 @@ Player::Player(const HeroClass type, const float startX, const float startY) {
     animationSpeed = 0.08f;
     isMoving = false;
     isAttacking = false;
+    isHurt = false;
+    isDead = false;
     sprite.setPosition(startX, startY);
 
     setupClassStats();
 }
 
-bool Player::loadTextures(const std::string& idlePath, const std::string& walkPath, const std::string& attackPath) {
+bool Player::loadTextures(const std::string& idlePath, 
+                          const std::string& walkPath, 
+                          const std::string& attackPath,
+                          const std::string& hurtPath,
+                          const std::string& deathPath) {
     if (!idleTexture.loadFromFile(idlePath) ||
         !walkTexture.loadFromFile(walkPath) ||
-        !attackTexture.loadFromFile(attackPath)) {
+        !attackTexture.loadFromFile(attackPath) ||
+        !hurtTexture.loadFromFile(hurtPath) ||
+        !deathTexture.loadFromFile(deathPath)) {
         std::cout << "Erro ao carregar as texturas do jogador!" << std::endl;
         return false;
     }
@@ -34,18 +44,28 @@ bool Player::loadTextures(const std::string& idlePath, const std::string& walkPa
     return true;
 }
 
+bool Player::loadSounds(const std::string &swordSound) {
+    sf::SoundBuffer buffer;
+    if (!buffer.loadFromFile(swordSound)) {
+        return -1;
+    }
+}
+
 void Player::setupClassStats() {
     switch (heroClass) {
         case HeroClass::Warrior:
             maxHp = 100;
             speed = 1.5f;
-            baseDamage = 15.0f;
+            baseDamage = 30.0f;
+            attackRange = 40.0f;
 
             frameWidth = 64;
             frameHeight = 64;
             attackFrames = 8;
             walkFrames = 6;
             idleFrames = 12;
+            hurtFrames = 5;
+            deathFrames = 7;
 
             //linhas do sprite sheet
             rowDown  = 0;
@@ -57,13 +77,16 @@ void Player::setupClassStats() {
         case HeroClass::Vampire:
             maxHp = 60;
             speed = 1.2f;
-            baseDamage = 25.0f;
+            baseDamage = 15.0f;
+            attackRange = 200.0f;
 
             frameWidth = 64;
             frameHeight = 64;
             attackFrames = 12;
             walkFrames = 6;
             idleFrames = 4;
+            hurtFrames = 4;
+            deathFrames = 10;
 
             rowDown  = 0;
             rowUp    = 1;
@@ -75,12 +98,17 @@ void Player::setupClassStats() {
             maxHp = 80;
             speed = 1.8f;
             baseDamage = 10.0f;
+            attackRange = 400.0f;
+            hurtFrames = 4;
+            deathFrames = 10;
             break;
     }
     currentHp = maxHp;
 }
 
 void Player::processInput(const sf::RenderWindow& window) {
+    if (isDead) return;
+
     currentMovement = sf::Vector2f(0.f, 0.f);
     isMoving = false;
 
@@ -95,41 +123,76 @@ void Player::processInput(const sf::RenderWindow& window) {
 
     float dx = mouseWorldPos.x - playerCenter.x;
     float dy = mouseWorldPos.y - playerCenter.y;
-    aimAngle = std::atan2(dy, dx) * 180.f / 3.14159265f;
-
-    if (aimAngle > -45.f && aimAngle <= 45.f) {
-        textureRow = rowRight * frameHeight; // Direita
-    }
-    else if (aimAngle > 45.f && aimAngle <= 135.f) {
-        textureRow = rowDown * frameHeight; // Baixo
-    }
-    else if (aimAngle > 135.f || aimAngle <= -135.f) {
-        textureRow = rowLeft * frameHeight; // Esquerda
-    }
-    else if (aimAngle > -135.f && aimAngle <= -45.f) {
-        textureRow = rowUp * frameHeight; // Cima
-    }
-
+    
     float length = std::sqrt(dx * dx + dy * dy);
     if (length != 0) {
         aimDirection = sf::Vector2f(dx / length, dy / length);
     }
 
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+        targetPos = mouseWorldPos;
         attack();
+    }
+
+    if (isAttacking) {
+        aimAngle = std::atan2(dy, dx) * 180.f / 3.14159265f;
+        if (aimAngle > -45.f && aimAngle <= 45.f) textureRow = rowRight * frameHeight;
+        else if (aimAngle > 45.f && aimAngle <= 135.f) textureRow = rowDown * frameHeight;
+        else if (aimAngle > 135.f || aimAngle <= -135.f) textureRow = rowLeft * frameHeight;
+        else if (aimAngle > -135.f && aimAngle <= -45.f) textureRow = rowUp * frameHeight;
+    } else if (isMoving) {
+        float moveAngle = std::atan2(currentMovement.y, currentMovement.x) * 180.f / 3.14159265f;
+        if (moveAngle > -45.f && moveAngle <= 45.f) textureRow = rowRight * frameHeight;
+        else if (moveAngle > 45.f && moveAngle <= 135.f) textureRow = rowDown * frameHeight;
+        else if (moveAngle > 135.f || moveAngle <= -135.f) textureRow = rowLeft * frameHeight;
+        else if (moveAngle > -135.f && moveAngle <= -45.f) textureRow = rowUp * frameHeight;
     }
 }
 
 sf::FloatRect Player::getNextHitbox() const {
     sf::FloatRect nextHitbox = sprite.getGlobalBounds();
     nextHitbox.width = 12.f; 
-    nextHitbox.height = 8.f;
+    nextHitbox.height = 20.f;
     nextHitbox.left += currentMovement.x + 26.f; 
-    nextHitbox.top += currentMovement.y + 20.f;
+    nextHitbox.top += currentMovement.y + 26.f;
     return nextHitbox;
 }
 
 void Player::updateAndMove(bool canMove) {
+    if (isDead) {
+        sprite.setTexture(deathTexture);
+        totalFrames = deathFrames;
+        animationSpeed = 0.1f;
+        
+        if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
+            if (playerFrame < totalFrames - 1) {
+                playerFrame++;
+            }
+            animationClock.restart();
+        }
+        int rectLeft = playerFrame * frameWidth;
+        sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
+        return;
+    }
+
+    if (isHurt) {
+        sprite.setTexture(hurtTexture);
+        totalFrames = hurtFrames;
+        animationSpeed = 0.1f;
+
+        if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
+            playerFrame++;
+            if (playerFrame >= totalFrames) {
+                isHurt = false;
+                playerFrame = 0;
+            }
+            animationClock.restart();
+        }
+        int rectLeft = playerFrame * frameWidth;
+        sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
+        return;
+    }
+
     if (isMoving && canMove) {
         sf::Vector2f actualMovement = currentMovement;
 
@@ -174,7 +237,6 @@ void Player::updateAndMove(bool canMove) {
 
         animationClock.restart();
     }
-    //if (playerFrame >= totalFrames) playerFrame = 0;
 
     int rectLeft = playerFrame * frameWidth;
     sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
@@ -185,8 +247,18 @@ void Player::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 }
 
 void Player::takeDamage(int amount) {
+    if (isDead) return;
+
     currentHp -= amount;
-    if (currentHp < 0) currentHp = 0;
+    if (currentHp <= 0) {
+        currentHp = 0;
+        isDead = true;
+        playerFrame = 0;
+    } else {
+        isHurt = true;
+        playerFrame = 0;
+        isAttacking = false;
+    }
 }
 
 void Player::heal(int amount) {
@@ -216,15 +288,32 @@ void Player::gainExp(int amount) {
 
 void Player::attack() {
     if (!isAttacking) {
-        isAttacking = true;
         playerFrame = 0;
 
         static sf::Clock attackCooldown;
-        if (attackCooldown.getElapsedTime().asSeconds() > 2.f) {
-            std::cout << "Atacando na direcao X: " << aimDirection.x << " Y: " << aimDirection.y << "\n";
 
-            attackCooldown.restart();
+        switch (heroClass) {
+            case HeroClass::Warrior:
+                if (attackCooldown.getElapsedTime().asSeconds() > 0.3f) {
+                    isAttacking = true;
+                    justAttacked = true;
+
+
+                    attackCooldown.restart();
+                }
+                break;
+            case HeroClass::Vampire:
+                if (attackCooldown.getElapsedTime().asSeconds() > 2.f) {
+                    isAttacking = true;
+
+                    justAttacked = true;
+
+                    attackCooldown.restart();
+                }
+                break;
+
         }
+
     }
 
 }

@@ -1,5 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+
 #include <string>
 
 enum class HeroClass { Warrior, Vampire, Archer };
@@ -11,6 +13,9 @@ private:
     sf::Texture idleTexture;
     sf::Texture walkTexture;
     sf::Texture attackTexture;
+    sf::Texture hurtTexture;
+    sf::Texture deathTexture;
+    sf::SoundBuffer swordSound;
 
     // --- Controle de Animação e Movimento ---
     int frameWidth{};
@@ -18,6 +23,8 @@ private:
     int idleFrames{};
     int walkFrames{};
     int attackFrames{};
+    int hurtFrames{};
+    int deathFrames{};
     int rowDown{};
     int rowUp{};
     int rowLeft{};
@@ -31,10 +38,14 @@ private:
     float animationSpeed;
     bool isMoving;
     bool isAttacking;
+    bool isHurt;
+    bool isDead;
+    bool justAttacked{false};
 
     // --- Atributos de Mira ---
     sf::Vector2f aimDirection{};
     float aimAngle{};
+    sf::Vector2f targetPos{};
 
     // --- Atributos de RPG ---
     HeroClass heroClass;
@@ -46,6 +57,7 @@ private:
     int potions;
     float speed{};
     float baseDamage{};
+    float attackRange{};
 
     void setupClassStats();
 
@@ -55,11 +67,23 @@ private:
 public:
     Player(HeroClass type, float startX, float startY);
 
-    bool loadTextures(const std::string& idlePath, const std::string& walkPath, const std::string& attackPath);
+    bool loadTextures(const std::string& idlePath, 
+                      const std::string& walkPath, 
+                      const std::string& attackPath,
+                      const std::string& hurtPath,
+                      const std::string& deathPath);
+
+    bool loadSounds(const std::string& swordSound);
 
     void processInput(const sf::RenderWindow& window); // Lê o teclado
     sf::FloatRect getNextHitbox() const; // Calcula onde a hitbox vai estar se ele andar
     void updateAndMove(bool canMove); // Aplica o movimento e processa os frames da animação
+    
+    bool popAttackFlag() {
+        bool flag = justAttacked;
+        justAttacked = false;
+        return flag;
+    }
 
     void attack();
     void takeDamage(int amount);
@@ -67,6 +91,13 @@ public:
     void usePotion();
     void gainExp(int amount);
     HeroClass getClass() const;
+    
+    bool checkDead() const { return isDead; }
+    float getAttackRange() const { return attackRange; }
+    float getBaseDamage() const { return baseDamage; }
+    sf::Vector2f getAimDirection() const { return aimDirection; }
+    sf::Vector2f getTargetPos() const { return targetPos; }
+    int getLevel() const { return level; }
 
     void setPosition(float x, float y);
     sf::Vector2f getPosition() const;
