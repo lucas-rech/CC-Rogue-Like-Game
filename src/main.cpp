@@ -61,6 +61,16 @@ int main() {
     }
     sf::Sound batSound(batBuffer);
 
+    // --- FOG OF WAR ---
+    sf::RenderTexture fogTexture;
+    if (!fogTexture.create(viewWidth, viewHeight)) {
+        std::cout << "Erro ao criar RenderTexture do Fog!" << std::endl;
+    }
+    
+    CircleShape lightShape(160.f); //tamanho do halo
+    lightShape.setOrigin(160.f, 160.f);
+    lightShape.setFillColor(sf::Color::Transparent);
+
     switch(player.getClass()) {
         case(HeroClass::Warrior):
             if (!player.loadTextures(
@@ -212,7 +222,10 @@ int main() {
                 }
             }
 
-            enemies[i].updateAndMove(player.getCenterPosition(), true, push);
+            sf::FloatRect intendedHitbox = enemies[i].getNextHitbox(player.getCenterPosition(), push);
+            bool canMove = !checkCollision(intendedHitbox, gameState);
+
+            enemies[i].updateAndMove(player.getCenterPosition(), canMove, push);
             
             if (enemies[i].popAttackFlag()) {
                 batSound.play();
@@ -294,6 +307,28 @@ int main() {
                 window.draw(s);
             }
         }
+
+        // --- FILTRO DE NOITE ---
+        sf::RectangleShape nightFilter(sf::Vector2f(viewWidth, viewHeight));
+        nightFilter.setFillColor(sf::Color(10, 15, 40, 100)); // Tom azul escuro para simular a noite
+        nightFilter.setPosition(view.getCenter().x - viewWidth/2.f, view.getCenter().y - viewHeight/2.f);
+        window.draw(nightFilter);
+
+        // --- RENDERIZAR FOG OF WAR ---
+        fogTexture.setView(fogTexture.getDefaultView());
+        fogTexture.clear(sf::Color(0, 0, 0, 230));
+        
+        sf::Vector2f playerScreenPos = player.getCenterPosition() - sf::Vector2f(view.getCenter().x - viewWidth/2.f, view.getCenter().y - viewHeight/2.f);
+        lightShape.setPosition(playerScreenPos);
+        
+        sf::RenderStates blendStates;
+        blendStates.blendMode = sf::BlendNone;
+        fogTexture.draw(lightShape, blendStates);
+        fogTexture.display();
+
+        sf::Sprite fogSprite(fogTexture.getTexture());
+        fogSprite.setPosition(view.getCenter().x - viewWidth/2.f, view.getCenter().y - viewHeight/2.f);
+        window.draw(fogSprite);
 
         // Overlay de morte
         if (player.checkDead()) {

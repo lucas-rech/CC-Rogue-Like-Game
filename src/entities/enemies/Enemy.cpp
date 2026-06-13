@@ -61,9 +61,33 @@ void Enemy::setupStats() {
             rowUp    = 1;
             rowLeft  = 2;
             rowRight = 3;
+            isHurt = false;
             break;
     }
     currentHp = maxHp;
+}
+
+sf::FloatRect Enemy::getNextHitbox(sf::Vector2f playerPos, sf::Vector2f pushVector) const {
+    sf::FloatRect nextHitbox = sprite.getGlobalBounds();
+    nextHitbox.width = 12.f; 
+    nextHitbox.height = 8.f;
+
+    sf::Vector2f mov(0.f, 0.f);
+    
+    if (!isDead && !isHurt && !isAttacking) {
+        float dx = playerPos.x - sprite.getPosition().x;
+        float dy = playerPos.y - sprite.getPosition().y;
+        float length = std::sqrt(dx * dx + dy * dy);
+
+        if (length != 0 && length > 1.f && length <= aggroRange) {
+            mov.x = (dx / length) * speed;
+            mov.y = (dy / length) * speed;
+        }
+    }
+
+    nextHitbox.left += mov.x + pushVector.x + 20.f;
+    nextHitbox.top += mov.y + pushVector.y + 20.f;
+    return nextHitbox;
 }
 
 void Enemy::updateAndMove(sf::Vector2f playerPos, bool canMove, sf::Vector2f pushVector) {

@@ -49,7 +49,7 @@ private:
     float speed{};
     float baseDamage{};
     float attackRange{};
-    float aggroRange{}; // Range para começar a seguir o player
+    float aggroRange{};
 
     void setupStats();
 
@@ -69,6 +69,8 @@ public:
         justAttacked = false;
         return flag;
     }
+
+    sf::FloatRect getNextHitbox(sf::Vector2f playerPos, sf::Vector2f pushVector) const;
 
     void updateAndMove(sf::Vector2f playerPos, bool canMove, sf::Vector2f pushVector = sf::Vector2f(0.f, 0.f));
 
