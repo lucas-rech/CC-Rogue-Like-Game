@@ -33,6 +33,29 @@ Este projeto utiliza o **CMake** para gerenciar a compilação. Não é necessá
 5. Clique no botão de **Play** (Run) verde.
 6. O CMake irá compilar o executável, gerar as DLLs necessárias e **copiar as pastas `src/assets` e `src/world`** automaticamente para a pasta de saída (ex: `cmake-build-debug`).
 7. Divirta-se!
+### Passo a Passo (Terminal/Prompt de Comando)
+Se você não usa o CLion, pode buildar facilmente em qualquer Windows usando o CMake nativo via terminal:
+
+1. Abra o Terminal (PowerShell ou CMD) na pasta raiz do projeto.
+2. Crie uma pasta para o build e entre nela:
+   ```bash
+   mkdir build
+   cd build
+   ```
+3. Configure o projeto com o CMake:
+   ```bash
+   cmake ..
+   ```
+4. Compile o jogo:
+   ```bash
+   cmake --build .
+   ```
+5. Durante a compilação, o CMake vai baixar a SFML automaticamente, gerar as dependências e copiar as pastas `src/assets` e `src/world` para a sua pasta `build`.
+6. Rode o executável gerado:
+   ```bash
+   .\Debug\CC_Rogue_Like_Game.exe
+   ```
+   *(Ou apenas `.\CC_Rogue_Like_Game.exe` dependendo do compilador gerado).*
 
 ## 🗺️ Como Editar o Mapa
 O mapa do jogo é gerado pela ferramenta gratuita [Tiled](https://www.mapeditor.org/).

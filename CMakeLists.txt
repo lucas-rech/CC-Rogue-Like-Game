@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CC_Rogue_Like_Game VERSION 0.0.4)
+project(CC_Rogue_Like_Game VERSION 0.0.5)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -29,6 +29,14 @@ add_executable(CC_Rogue_Like_Game
         src/entities/hero/Player.cpp
         src/entities/enemies/Enemy.hpp
         src/entities/enemies/Enemy.cpp
+        src/items/Item.cpp
+        src/traps/Trap.cpp
+        src/ui/Menu.cpp
+        src/ui/HUD.cpp
+        src/ui/GameOverScreen.cpp
+        src/ui/VictoryScreen.cpp
+        src/ui/AttributeMenu.cpp
+        src/entities/npc/NPC.cpp
 )
 
 # Adiciona o diretório de includes
@@ -52,13 +60,20 @@ if(WIN32)
             $<TARGET_FILE:sfml-system>
             $<TARGET_FILE:sfml-audio>
             "${SFML_SOURCE_DIR}/extlibs/bin/x64/openal32.dll"
-            # DLLs do Compilador (MinGW) que o Windows exige
-            "${COMPILER_DIR}/libgcc_s_seh-1.dll"
-            "${COMPILER_DIR}/libstdc++-6.dll"
-            "${COMPILER_DIR}/libwinpthread-1.dll"
             # Destino: A pasta onde o seu executável (.exe) está sendo gerado
             $<TARGET_FILE_DIR:CC_Rogue_Like_Game>
     )
+
+    # Se for compilado usando MinGW (GNU), copie as DLLs exigidas
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${COMPILER_DIR}/libgcc_s_seh-1.dll"
+                "${COMPILER_DIR}/libstdc++-6.dll"
+                "${COMPILER_DIR}/libwinpthread-1.dll"
+                $<TARGET_FILE_DIR:CC_Rogue_Like_Game>
+        )
+    endif()
 endif()
 
 # 8. Copiar pastas de recursos (Assets e World) para o diretorio de build
@@ -71,5 +86,5 @@ add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
 add_custom_command(TARGET CC_Rogue_Like_Game POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/src/world"
-    "$<TARGET_FILE_DIR:CC_Rogue_Like_Game>/src/world"
+    "$<TARGET_FILE_DIR:CC_Rogue_Like_Game>/world"
 )

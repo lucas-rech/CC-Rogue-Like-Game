@@ -2,18 +2,22 @@
 
 #include <cmath>
 #include <iostream>
-#include <SFML/Audio.hpp>
+#include <filesystem>
 
-
-Player::Player(const HeroClass type, const float startX, const float startY) {
-    heroClass = type;
+Player::Player(const float startX, const float startY) {
     level = 1;
     currentExp = 0;
     maxExp = 100;
     potions = 3;
-    currentHp = maxHp;
+    keys = 0;
+    armor = 0;
+    
+    currentMana = 100;
+    maxMana = 100;
+    manaPotions = 3;
+    magicUnlocked = false;
+    attackIsMagic = false;
 
-    //variáveis gráficas
     playerFrame = 0;
     totalFrames = 12;
     textureRow = 0;
@@ -22,13 +26,47 @@ Player::Player(const HeroClass type, const float startX, const float startY) {
     isAttacking = false;
     isHurt = false;
     isDead = false;
+    justAttacked = false;
+    attackDamageReady = false;
+    hasDialog = true;
+    dialogTimer = 10.0f; // Exibir por 10 segundos
     sprite.setPosition(startX, startY);
+
+    // Carregar fonte para o dialogo
+    std::vector<std::string> fontPaths = {
+        "assets/fonts/arial.ttf",
+        "assets/fonts/DejaVuSans.ttf",
+        "assets/fonts/OpenSans-Regular.ttf",
+        "assets/fonts/Roboto-Regular.ttf"
+    };
+
+    if (const char* windowsDir = std::getenv("WINDIR")) {
+        fontPaths.emplace_back(std::string(windowsDir) + "/Fonts/arial.ttf");
+    }
+
+    for (const auto& path : fontPaths) {
+        if (std::filesystem::exists(path) && dialogFont.loadFromFile(path)) {
+            break;
+        }
+    }
+
+    dialogText.setFont(dialogFont);
+    dialogText.setString("Minha cabeca... o que aconteceu? \nOnde eu estou? Preciso encontrar respostas.");
+    dialogText.setCharacterSize(9);
+    dialogText.setFillColor(sf::Color::White);
+    
+    dialogBg.setFillColor(sf::Color(0, 0, 0, 180));
+    dialogBg.setOutlineThickness(1.f);
+    dialogBg.setOutlineColor(sf::Color::White);
+    
+    sf::FloatRect textBounds = dialogText.getLocalBounds();
+    dialogBg.setSize(sf::Vector2f(textBounds.width + 10.f, textBounds.height + 10.f));
 
     setupClassStats();
 }
 
-bool Player::loadTextures(const std::string& idlePath, 
-                          const std::string& walkPath, 
+bool Player::loadTextures(const std::string& idlePath,
+                          const std::string& walkPath,
                           const std::string& attackPath,
                           const std::string& hurtPath,
                           const std::string& deathPath) {
@@ -40,74 +78,41 @@ bool Player::loadTextures(const std::string& idlePath,
         std::cout << "Erro ao carregar as texturas do jogador!" << std::endl;
         return false;
     }
+
     sprite.setTexture(idleTexture);
+    sprite.setTextureRect(sf::IntRect(0, 0, frameWidth, frameHeight));
     return true;
 }
 
-bool Player::loadSounds(const std::string &swordSound) {
-    sf::SoundBuffer buffer;
-    if (!buffer.loadFromFile(swordSound)) {
-        return -1;
-    }
-}
-
 void Player::setupClassStats() {
-    switch (heroClass) {
-        case HeroClass::Warrior:
-            maxHp = 100;
-            speed = 1.5f;
-            baseDamage = 30.0f;
-            attackRange = 40.0f;
+    maxExp = 100;
+    unspentAttributePoints = 0;
+    level = 1;
+    maxHp = 100;
+    speed = 1.5f;
+    baseDamage = 30.0f;
+    attackRange = 42.0f;
 
-            frameWidth = 64;
-            frameHeight = 64;
-            attackFrames = 8;
-            walkFrames = 6;
-            idleFrames = 12;
-            hurtFrames = 5;
-            deathFrames = 7;
+    frameWidth = 64;
+    frameHeight = 64;
+    attackFrames = 8;
+    walkFrames = 6;
+    idleFrames = 12;
+    hurtFrames = 5;
+    deathFrames = 7;
 
-            //linhas do sprite sheet
-            rowDown  = 0;
-            rowLeft  = 1;
-            rowRight = 2;
-            rowUp    = 3;
-            break;
+    rowDown  = 0;
+    rowLeft  = 1;
+    rowRight = 2;
+    rowUp    = 3;
 
-        case HeroClass::Vampire:
-            maxHp = 60;
-            speed = 1.2f;
-            baseDamage = 15.0f;
-            attackRange = 200.0f;
-
-            frameWidth = 64;
-            frameHeight = 64;
-            attackFrames = 12;
-            walkFrames = 6;
-            idleFrames = 4;
-            hurtFrames = 4;
-            deathFrames = 10;
-
-            rowDown  = 0;
-            rowUp    = 1;
-            rowLeft  = 2;
-            rowRight = 3;
-            break;
-
-        case HeroClass::Archer:
-            maxHp = 80;
-            speed = 1.8f;
-            baseDamage = 10.0f;
-            attackRange = 400.0f;
-            hurtFrames = 4;
-            deathFrames = 10;
-            break;
-    }
     currentHp = maxHp;
 }
 
 void Player::processInput(const sf::RenderWindow& window) {
-    if (isDead) return;
+    if (isDead) {
+        return;
+    }
 
     currentMovement = sf::Vector2f(0.f, 0.f);
     isMoving = false;
@@ -117,20 +122,25 @@ void Player::processInput(const sf::RenderWindow& window) {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) { currentMovement.y += speed; isMoving = true; }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) { currentMovement.y -= speed; isMoving = true; }
 
-    const sf::Vector2i currentMousePixelPosition = sf::Mouse::getPosition(window);
-    const sf::Vector2f mouseWorldPos = window.mapPixelToCoords(currentMousePixelPosition);
+    const sf::Vector2i mousePixelPosition = sf::Mouse::getPosition(window);
+    const sf::Vector2f mouseWorldPos = window.mapPixelToCoords(mousePixelPosition);
     const sf::Vector2f playerCenter = getCenterPosition();
 
     float dx = mouseWorldPos.x - playerCenter.x;
     float dy = mouseWorldPos.y - playerCenter.y;
-    
     float length = std::sqrt(dx * dx + dy * dy);
-    if (length != 0) {
+
+    if (length != 0.f) {
         aimDirection = sf::Vector2f(dx / length, dy / length);
     }
 
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
         targetPos = mouseWorldPos;
+        attackIsMagic = false;
+        attack();
+    } else if (sf::Mouse::isButtonPressed(sf::Mouse::Right) && magicUnlocked && currentMana >= 20) {
+        targetPos = mouseWorldPos;
+        attackIsMagic = true;
         attack();
     }
 
@@ -151,28 +161,30 @@ void Player::processInput(const sf::RenderWindow& window) {
 
 sf::FloatRect Player::getNextHitbox() const {
     sf::FloatRect nextHitbox = sprite.getGlobalBounds();
-    nextHitbox.width = 12.f; 
+    nextHitbox.width = 12.f;
     nextHitbox.height = 20.f;
-    nextHitbox.left += currentMovement.x + 26.f; 
+    nextHitbox.left += currentMovement.x + 26.f;
     nextHitbox.top += currentMovement.y + 26.f;
     return nextHitbox;
 }
 
-void Player::updateAndMove(bool canMove) {
+bool Player::updateAndMove(bool canMove, float deltaTime) {
+    bool moved = false;
+
     if (isDead) {
         sprite.setTexture(deathTexture);
         totalFrames = deathFrames;
         animationSpeed = 0.1f;
-        
+
         if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
             if (playerFrame < totalFrames - 1) {
                 playerFrame++;
             }
             animationClock.restart();
         }
-        int rectLeft = playerFrame * frameWidth;
-        sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
-        return;
+
+        sprite.setTextureRect(sf::IntRect(playerFrame * frameWidth, textureRow, frameWidth, frameHeight));
+        return false;
     }
 
     if (isHurt) {
@@ -188,48 +200,41 @@ void Player::updateAndMove(bool canMove) {
             }
             animationClock.restart();
         }
-        int rectLeft = playerFrame * frameWidth;
-        sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
-        return;
+
+        sprite.setTextureRect(sf::IntRect(playerFrame * frameWidth, textureRow, frameWidth, frameHeight));
+        return false;
     }
 
     if (isMoving && canMove) {
         sf::Vector2f actualMovement = currentMovement;
-
         if (isAttacking) {
             actualMovement.x *= 0.1f;
             actualMovement.y *= 0.1f;
         }
 
         sprite.move(actualMovement);
+        moved = actualMovement.x != 0.f || actualMovement.y != 0.f;
     }
 
     if (isAttacking) {
         sprite.setTexture(attackTexture);
         totalFrames = attackFrames;
         animationSpeed = 0.05f;
-
     } else if (isMoving) {
         sprite.setTexture(walkTexture);
         totalFrames = walkFrames;
-        animationSpeed = 0.1f;
+        animationSpeed = 0.10f;
     } else {
         sprite.setTexture(idleTexture);
-        animationSpeed = 0.12f;
-        if (heroClass == HeroClass::Warrior && textureRow == rowUp * frameHeight) {
-            totalFrames = 4;
-        } else {
-            totalFrames = idleFrames;
-        }
+        totalFrames = (textureRow == rowUp * frameHeight) ? 4 : idleFrames;
+        animationSpeed = 0.15f;
     }
 
-    // --- CONTROLE DA ANIMAÇÃO DO SPRITE ---
     if (animationClock.getElapsedTime().asSeconds() > animationSpeed) {
         playerFrame++;
 
         if (playerFrame >= totalFrames) {
             playerFrame = 0;
-
             if (isAttacking) {
                 isAttacking = false;
             }
@@ -238,27 +243,56 @@ void Player::updateAndMove(bool canMove) {
         animationClock.restart();
     }
 
-    int rectLeft = playerFrame * frameWidth;
-    sprite.setTextureRect(sf::IntRect(rectLeft, textureRow, frameWidth, frameHeight));
+    sprite.setTextureRect(sf::IntRect(playerFrame * frameWidth, textureRow, frameWidth, frameHeight));
+
+    if (hasDialog) {
+        dialogTimer -= deltaTime;
+        if (dialogTimer <= 0.f) {
+            hasDialog = false;
+        } else {
+            dialogBg.setPosition(sprite.getPosition().x - dialogBg.getSize().x / 2.f + 32.f, sprite.getPosition().y - 40.f);
+            dialogText.setPosition(dialogBg.getPosition().x + 5.f, dialogBg.getPosition().y + 5.f);
+        }
+    }
+
+    return moved;
 }
 
 void Player::draw(sf::RenderTarget& target, sf::RenderStates states) const {
     target.draw(sprite, states);
 }
 
-void Player::takeDamage(int amount) {
-    if (isDead) return;
+void Player::drawDialog(sf::RenderTarget& target, sf::RenderStates states) const {
+    if (hasDialog) {
+        target.draw(dialogBg, states);
+        target.draw(dialogText, states);
+    }
+}
 
-    currentHp -= amount;
+int Player::takeDamage(int amount) {
+    if (isDead) {
+        return 0;
+    }
+
+    int finalDamage = amount - armor;
+    if (finalDamage < 1) {
+        finalDamage = 1;
+    }
+
+    currentHp -= finalDamage;
     if (currentHp <= 0) {
         currentHp = 0;
         isDead = true;
+        isHurt = false;
+        isAttacking = false;
         playerFrame = 0;
     } else {
         isHurt = true;
-        playerFrame = 0;
         isAttacking = false;
+        playerFrame = 0;
     }
+
+    return finalDamage;
 }
 
 void Player::heal(int amount) {
@@ -266,11 +300,14 @@ void Player::heal(int amount) {
     if (currentHp > maxHp) currentHp = maxHp;
 }
 
-void Player::usePotion() {
-    if (potions > 0 && currentHp < maxHp) {
+bool Player::usePotion() {
+    if (potions > 0 && currentHp < maxHp && !isDead) {
         heal(30);
         potions--;
+        return true;
     }
+
+    return false;
 }
 
 void Player::gainExp(int amount) {
@@ -279,43 +316,122 @@ void Player::gainExp(int amount) {
         level++;
         currentExp -= maxExp;
         maxExp = static_cast<int>(static_cast<float>(maxExp) * 1.5f);
-        maxHp += 10;
-        currentHp = maxHp;
-        baseDamage += 2.0f;
-        std::cout << "Level Up! Nivel " << level << "!\n";
+        unspentAttributePoints++;
+        std::cout << "Level Up! Nivel " << level << "! +1 Ponto de Atributo.\n";
     }
 }
 
-void Player::attack() {
-    if (!isAttacking) {
-        playerFrame = 0;
+void Player::addPotion(int amount) {
+    potions += amount;
+}
 
-        static sf::Clock attackCooldown;
+void Player::addManaPotion(int amount) {
+    manaPotions += amount;
+}
 
-        switch (heroClass) {
-            case HeroClass::Warrior:
-                if (attackCooldown.getElapsedTime().asSeconds() > 0.3f) {
-                    isAttacking = true;
-                    justAttacked = true;
+void Player::addKey(int amount) {
+    keys += amount;
+}
 
+void Player::increaseDamage(int amount) {
+    baseDamage += static_cast<float>(amount);
+}
 
-                    attackCooldown.restart();
-                }
-                break;
-            case HeroClass::Vampire:
-                if (attackCooldown.getElapsedTime().asSeconds() > 2.f) {
-                    isAttacking = true;
+void Player::increaseArmor(int amount) {
+    armor += amount;
+}
 
-                    justAttacked = true;
+void Player::increaseMaxHp(int amount) {
+    maxHp += amount;
+    heal(amount);
+}
 
-                    attackCooldown.restart();
-                }
-                break;
+void Player::resetForNewGame(float startX, float startY) {
+    level = 1;
+    currentExp = 0;
+    maxExp = 100;
+    potions = 3;
+    keys = 0;
+    armor = 0;
+    attackDamageReady = false;
+    justAttacked = false;
+    isMoving = false;
+    isAttacking = false;
+    isHurt = false;
+    isDead = false;
+    playerFrame = 0;
+    textureRow = 0;
+    setupClassStats();
+    setPosition(startX, startY);
+}
 
-        }
-
+bool Player::attack() {
+    if (isDead || isHurt || isAttacking) {
+        return false;
     }
 
+    static sf::Clock attackCooldown;
+    const float cooldown = attackIsMagic ? 2.0f : 0.3f;
+
+    if (attackCooldown.getElapsedTime().asSeconds() > cooldown) {
+        if (attackIsMagic) {
+            currentMana -= 20;
+        }
+        isAttacking = true;
+        justAttacked = true;
+        attackDamageReady = true;
+        playerFrame = 0;
+        attackCooldown.restart();
+        return true;
+    }
+    return false;
+}
+
+bool Player::popAttackFlag() {
+    bool flag = justAttacked;
+    justAttacked = false;
+    return flag;
+}
+
+bool Player::hasPendingAttack() const {
+    return justAttacked;
+}
+
+bool Player::isPendingAttackMagic() const {
+    return attackIsMagic;
+}
+
+bool Player::consumeAttackDamageReady() {
+    if (!attackDamageReady) {
+        return false;
+    }
+
+    attackDamageReady = false;
+    justAttacked = false;
+    return true;
+}
+
+sf::FloatRect Player::getAttackHitbox() const {
+    sf::Vector2f center = getCenterPosition();
+    float width = 34.f;
+    float height = 34.f;
+    float distance = 28.f;
+
+    if (std::abs(aimDirection.x) > std::abs(aimDirection.y)) {
+        if (aimDirection.x >= 0.f) {
+            return {center.x + distance, center.y - height / 2.f, width, height};
+        }
+        return {center.x - distance - width, center.y - height / 2.f, width, height};
+    }
+
+    if (aimDirection.y >= 0.f) {
+        return {center.x - width / 2.f, center.y + distance, width, height};
+    }
+    return {center.x - width / 2.f, center.y - distance - height, width, height};
+}
+
+int Player::getDamage() const {
+    return static_cast<int>(baseDamage);
 }
 
 sf::Vector2f Player::getPosition() const {
@@ -326,10 +442,130 @@ sf::Vector2f Player::getCenterPosition() const {
     return {sprite.getPosition().x + 32.f, sprite.getPosition().y + 32.f};
 }
 
-HeroClass Player::getClass() const {
-    return this->heroClass;
+sf::FloatRect Player::getHitbox() const {
+    sf::FloatRect hitbox = sprite.getGlobalBounds();
+    hitbox.width = 12.f;
+    hitbox.height = 20.f;
+    hitbox.left += 26.f;
+    hitbox.top += 26.f;
+    return hitbox;
+}
+
+int Player::getCurrentMana() const {
+    return currentMana;
+}
+
+int Player::getMaxMana() const {
+    return maxMana;
+}
+
+int Player::getManaPotions() const {
+    return manaPotions;
+}
+
+int Player::getUnspentPoints() const {
+    return unspentAttributePoints;
+}
+
+void Player::upgradeHealth() {
+    if (unspentAttributePoints > 0) {
+        unspentAttributePoints--;
+        maxHp += 20;
+        currentHp += 20; // Heals when upgraded
+        std::cout << "Max HP increased to " << maxHp << "!\n";
+    }
+}
+
+void Player::upgradeDamage() {
+    if (unspentAttributePoints > 0) {
+        unspentAttributePoints--;
+        baseDamage += 4.0f;
+        std::cout << "Base Damage increased to " << baseDamage << "!\n";
+    }
+}
+
+void Player::upgradeSpeed() {
+    if (unspentAttributePoints > 0) {
+        unspentAttributePoints--;
+        speed += 0.2f;
+        std::cout << "Speed increased to " << speed << "!\n";
+    }
+}
+
+bool Player::hasMagicUnlocked() const {
+    return magicUnlocked;
+}
+
+void Player::unlockMagic() {
+    magicUnlocked = true;
+}
+
+bool Player::useManaPotion() {
+    if (manaPotions > 0 && currentMana < maxMana) {
+        manaPotions--;
+        recoverMana(30);
+        return true;
+    }
+    return false;
+}
+
+void Player::recoverMana(int amount) {
+    currentMana += amount;
+    if (currentMana > maxMana) currentMana = maxMana;
+}
+
+bool Player::checkDead() const {
+    return isDead;
+}
+
+float Player::getAttackRange() const {
+    return attackRange;
+}
+
+float Player::getBaseDamage() const {
+    return baseDamage;
+}
+
+sf::Vector2f Player::getAimDirection() const {
+    return aimDirection;
+}
+
+sf::Vector2f Player::getTargetPos() const {
+    return targetPos;
 }
 
 void Player::setPosition(float x, float y) {
     sprite.setPosition(x, y);
+}
+
+int Player::getCurrentHp() const {
+    return currentHp;
+}
+
+int Player::getMaxHp() const {
+    return maxHp;
+}
+
+int Player::getLevel() const {
+    return level;
+}
+
+int Player::getCurrentExp() const {
+    return currentExp;
+}
+
+int Player::getMaxExp() const {
+    return maxExp;
+}
+
+int Player::getPotions() const {
+    return potions;
+}
+
+int Player::getKeys() const {
+    return keys;
+}
+
+int Player::getArmor() const {
+    return armor;
 }
