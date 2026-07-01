@@ -1,4 +1,4 @@
-#include "Trap.hpp"
+﻿#include "Trap.hpp"
 #include <random>
 
 namespace {
@@ -131,12 +131,13 @@ void Trap::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 
 void spawnTraps(std::vector<Trap>& traps, const GameState& gameState, const Player& player) {
     traps.clear();
-    traps.reserve(30); // Let's spawn 30 traps
+    const int trapCount = gameState.currentLevel == 1 ? 30 : gameState.currentLevel == 2 ? 40 : 50;
+    traps.reserve(trapCount);
 
     std::uniform_int_distribution<int> xDist(2, gameState.map.getWidth() - 3);
     std::uniform_int_distribution<int> yDist(2, gameState.map.getHeight() - 3);
 
-    for (int i = 0; i < 30; ++i) {
+    for (int i = 0; i < trapCount; ++i) {
         bool spawned = false;
         int attempts = 0;
         while (!spawned && attempts < 50) {

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../entities/hero/Player.hpp"
+class Enemy;
 #include "../world/Level.hpp"
 
 enum class ItemType {
@@ -24,6 +25,8 @@ public:
     sf::FloatRect getBounds() const;
     bool isCollected() const;
     void collect(Player& player, GameStats& stats, int currentLevel);
+    void destroySilent(); // Usado pelos monstros para destruir itens (sem dar pontos pro jogador)
+    ItemType getType() const { return type; }
 
 private:
     ItemType type;
@@ -42,5 +45,5 @@ private:
 };
 
 void spawnItems(std::vector<Item>& items, const GameState& gameState, const Player& player);
-void updateItems(std::vector<Item>& items, Player& player, GameState& gameState);
+void updateItems(std::vector<Item>& items, Player& player, GameState& gameState, const std::vector<Enemy>& enemies);
 void drawItems(sf::RenderWindow& window, const std::vector<Item>& items);

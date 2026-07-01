@@ -1,6 +1,5 @@
-#include "AttributeMenu.hpp"
+﻿#include "AttributeMenu.hpp"
 #include <cstdlib>
-#include <filesystem>
 #include <vector>
 
 AttributeMenu::AttributeMenu() : fontLoaded(false) {}
@@ -18,7 +17,7 @@ bool AttributeMenu::loadFont() {
     }
 
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && font.loadFromFile(path)) {
+        if (font.loadFromFile(path)) {
             fontLoaded = true;
             return true;
         }

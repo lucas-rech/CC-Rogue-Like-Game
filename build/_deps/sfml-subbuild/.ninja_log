@@ -1,0 +1,21 @@
+# ninja log v7
+2	93	8043945382863839	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-mkdir	e9cc759ca2952635
+2	93	8043945382863839	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-mkdir	e9cc759ca2952635
+94	55287	8043945934837417	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-download	c8c4ae3761df19c4
+94	55287	8043945934837417	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-download	c8c4ae3761df19c4
+55289	55430	8043945934886656	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-update	a0953fe0bd107510
+55289	55430	8043945934886656	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-update	a0953fe0bd107510
+55430	55572	8043945937668169	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-patch	1c0e8d2ee10aaa6c
+55430	55572	8043945937668169	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-patch	1c0e8d2ee10aaa6c
+55572	55667	8043945938461539	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-configure	4795e2e811f29500
+55572	55667	8043945938461539	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-configure	4795e2e811f29500
+55668	55768	8043945939607392	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-build	99090af6b56b6f32
+55668	55768	8043945939607392	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-build	99090af6b56b6f32
+55769	55853	8043945940426836	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-install	740f78ed1928afdf
+55769	55853	8043945940426836	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-install	740f78ed1928afdf
+55853	55944	8043945941387075	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-test	63026c9c2cfca8e
+55853	55944	8043945941387075	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-test	63026c9c2cfca8e
+55944	56068	8043945942616203	CMakeFiles/sfml-populate-complete	c194b462b466b8d3
+55944	56068	8043945942616203	sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-done	c194b462b466b8d3
+55944	56068	8043945942616203	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/CMakeFiles/sfml-populate-complete	c194b462b466b8d3
+55944	56068	8043945942616203	C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/sfml-populate-prefix/src/sfml-populate-stamp/sfml-populate-done	c194b462b466b8d3

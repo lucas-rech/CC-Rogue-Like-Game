@@ -1,4 +1,5 @@
 #include "Item.hpp"
+#include "../entities/enemies/Enemy.hpp"
 
 #include <cmath>
 #include <random>
@@ -52,6 +53,10 @@ void Item::collect(Player& player, GameStats& stats, int currentLevel) {
     collected = true;
     applyEffect(player);
     stats.registerItemCollected(value, currentLevel);
+}
+
+void Item::destroySilent() {
+    collected = true;
 }
 
 void Item::setupItem() {
@@ -180,6 +185,7 @@ void Item::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 
 void spawnItems(std::vector<Item>& items, const GameState& gameState, const Player& player) {
     items.clear();
+    const DifficultyConfig& config = getDifficultyConfig(gameState.difficulty);
     items.reserve(50);
 
     // Fixed spawns
@@ -188,7 +194,8 @@ void spawnItems(std::vector<Item>& items, const GameState& gameState, const Play
         {ItemType::Key,       {198.65f, 1195.3f}},
         {ItemType::Key,       {3064.55f, 928.601f}},
         {ItemType::Key,       {202.7f, 1426.15f}},
-        {ItemType::SpellTome, {743.3f, 968.35f}}
+        {ItemType::SpellTome, {845.f, 938.5f}},
+        {ItemType::PowerUp,   {3160.f, 250.f}} // Item Secreto!
     };
 
     for (const auto& spawn : fixedSpawns) {
@@ -226,17 +233,33 @@ void spawnItems(std::vector<Item>& items, const GameState& gameState, const Play
         }
     };
 
-    spawnRandomItem(ItemType::Potion, 15);
-    spawnRandomItem(ItemType::ManaPotion, 15);
-    spawnRandomItem(ItemType::Shield, 5);
+    spawnRandomItem(ItemType::Potion, config.healthPotionCount);
+    spawnRandomItem(ItemType::ManaPotion, config.manaPotionCount);
+    spawnRandomItem(ItemType::Shield, config.shieldCount);
+    spawnRandomItem(ItemType::Weapon, 2);
+    spawnRandomItem(ItemType::PowerUp, 2);
 }
 
-void updateItems(std::vector<Item>& items, Player& player, GameState& gameState) {
+void updateItems(std::vector<Item>& items, Player& player, GameState& gameState, const std::vector<Enemy>& enemies) {
     sf::FloatRect playerHitbox = player.getHitbox();
 
     for (Item& item : items) {
-        if (!item.isCollected() && playerHitbox.intersects(item.getBounds())) {
-            item.collect(player, gameState.stats, gameState.currentLevel);
+        if (!item.isCollected()) {
+            if (playerHitbox.intersects(item.getBounds())) {
+                item.collect(player, gameState.stats, gameState.currentLevel);
+                gameState.campaignScore += 50;
+                continue;
+            }
+
+            // Inimigos destroem os itens menores apenas
+            if (item.getType() != ItemType::Key && item.getType() != ItemType::PowerUp && item.getType() != ItemType::SpellTome) {
+                for (const Enemy& enemy : enemies) {
+                    if (enemy.isAlive() && enemy.getHitbox().intersects(item.getBounds())) {
+                        item.destroySilent();
+                        break;
+                    }
+                }
+            }
         }
     }
 }

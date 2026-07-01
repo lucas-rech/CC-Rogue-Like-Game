@@ -1,0 +1,14 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/System/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/Main/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/Window/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/Graphics/cmake_install.cmake",
+		"C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/\u00c1rea de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-build/src/SFML/Audio/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

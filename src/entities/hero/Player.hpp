@@ -1,6 +1,11 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <vector>
+
+struct GameState;
+class Item;
+class Enemy;
 
 class Player : public sf::Drawable {
 private:
@@ -58,6 +63,9 @@ private:
     int currentHp;
     int potions;
     int keys;
+    int weaponsCollected = 0;
+    int shieldsCollected = 0;
+    int powerUpsCollected = 0;
     int armor;
     float speed{};
     float baseDamage{};
@@ -82,6 +90,12 @@ private:
 
 public:
     void drawDialog(sf::RenderTarget& target, sf::RenderStates states) const;
+
+    sf::Vector2f lastPos;
+    float stuckTimer = 0.f;
+    float wanderTimer = 0.f;
+    sf::Vector2f wanderDir;
+
     Player(float startX, float startY);
 
     bool loadTextures(const std::string& idlePath,
@@ -91,6 +105,7 @@ public:
                       const std::string& deathPath);
 
     void processInput(const sf::RenderWindow& window); // Lê o teclado
+    void autoPlayLogic(float deltaTime, const GameState& gameState, const std::vector<Item>& items, const std::vector<Enemy>& enemies); // IA
     sf::FloatRect getNextHitbox() const; // Calcula onde a hitbox vai estar se ele andar
     bool updateAndMove(bool canMove, float deltaTime); // Aplica o movimento e processa os frames da animação
 
@@ -108,7 +123,8 @@ public:
     void addPotion(int amount = 1);
     void addManaPotion(int amount = 1);
     void addKey(int amount = 1);
-    void increaseDamage(int amount);
+    void clearKeys();
+    void increaseDamage(float amount);
     void increaseArmor(int amount);
     void increaseMaxHp(int amount);
     void resetForNewGame(float startX, float startY);
@@ -118,6 +134,10 @@ public:
     int getMaxMana() const;
     int getManaPotions() const;
     int getUnspentPoints() const;
+
+    int getWeaponsCollected() const { return weaponsCollected; }
+    int getShieldsCollected() const { return shieldsCollected; }
+    int getPowerUpsCollected() const { return powerUpsCollected; }
 
     void upgradeHealth();
     void upgradeDamage();

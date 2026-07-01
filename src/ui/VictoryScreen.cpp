@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <vector>
-#include <filesystem>
 
 VictoryScreen::VictoryScreen() : fontLoaded(false) {
 }
@@ -21,7 +20,7 @@ bool VictoryScreen::loadFont() {
     }
 
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && font.loadFromFile(path)) {
+        if (font.loadFromFile(path)) {
             fontLoaded = true;
             return true;
         }
@@ -49,14 +48,12 @@ void VictoryScreen::draw(sf::RenderWindow& window, const Player& player, const G
 
     std::ostringstream summary;
     summary << "O Conde Vampiro foi derrotado!\n\n"
-            << "Pontuacao final: " << gameState.stats.score << "\n"
+            << "Tempo Total: " << formatCampaignTime(gameState.campaignElapsedTime) << "\n"
+            << "Pontuacao final: " << gameState.finalScore << "\n"
             << "Level alcancado: " << player.getLevel() << "\n"
             << "Inimigos derrotados: " << gameState.stats.enemiesDefeated << "\n"
             << "Itens coletados: " << gameState.stats.itemsCollected << "\n"
-            << "Movimentos: " << gameState.stats.movements << "\n"
-            << "Dano recebido: " << gameState.stats.damageTaken << "\n"
-            << "Pocoes usadas: " << gameState.stats.potionsUsed << "\n"
-            << "Armadilhas ativadas: " << gameState.stats.trapsTriggered;
+            << "Pocoes usadas: " << gameState.stats.potionsUsed;
 
     window.draw(makeText(summary.str(), 26, sf::Color::White, 130.f, 180.f));
     window.draw(makeText("R - Jogar Novamente", 24, sf::Color(255, 220, 120), 130.f, 510.f));

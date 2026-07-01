@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <vector>
-#include <filesystem>
 
 GameOverScreen::GameOverScreen() : fontLoaded(false) {
 }
@@ -21,7 +20,7 @@ bool GameOverScreen::loadFont() {
     }
 
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && font.loadFromFile(path)) {
+        if (font.loadFromFile(path)) {
             fontLoaded = true;
             return true;
         }
@@ -48,15 +47,14 @@ void GameOverScreen::draw(sf::RenderWindow& window, const Player& player, const 
     window.draw(makeText("GAME OVER", 54, sf::Color(230, 70, 70), 120.f, 90.f));
 
     std::ostringstream summary;
-    summary << "Pontuacao final: " << gameState.stats.score << "\n"
+    summary << "Tempo Total: " << formatCampaignTime(gameState.campaignElapsedTime) << "\n"
+            << "Pontuacao final: " << gameState.finalScore << "\n"
+            << "Fases Completadas: " << gameState.completedLevels << "\n"
             << "Level alcancado: " << player.getLevel() << "\n"
             << "Experiencia: " << player.getCurrentExp() << "/" << player.getMaxExp() << "\n"
             << "Inimigos derrotados: " << gameState.stats.enemiesDefeated << "\n"
             << "Itens coletados: " << gameState.stats.itemsCollected << "\n"
-            << "Movimentos: " << gameState.stats.movements << "\n"
-            << "Dano recebido: " << gameState.stats.damageTaken << "\n"
-            << "Pocoes usadas: " << gameState.stats.potionsUsed << "\n"
-            << "Armadilhas ativadas: " << gameState.stats.trapsTriggered;
+            << "Pocoes usadas: " << gameState.stats.potionsUsed;
 
     window.draw(makeText(summary.str(), 26, sf::Color::White, 130.f, 180.f));
     window.draw(makeText("R - Reiniciar", 24, sf::Color(255, 220, 120), 130.f, 510.f));

@@ -2,7 +2,9 @@
 
 #include <cmath>
 #include <iostream>
-#include <filesystem>
+#include "../../items/Item.hpp"
+#include "../enemies/Enemy.hpp"
+#include "../../world/Level.hpp"
 
 Player::Player(const float startX, const float startY) {
     level = 1;
@@ -45,7 +47,7 @@ Player::Player(const float startX, const float startY) {
     }
 
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && dialogFont.loadFromFile(path)) {
+        if (dialogFont.loadFromFile(path)) {
             break;
         }
     }
@@ -156,6 +158,116 @@ void Player::processInput(const sf::RenderWindow& window) {
         else if (moveAngle > 45.f && moveAngle <= 135.f) textureRow = rowDown * frameHeight;
         else if (moveAngle > 135.f || moveAngle <= -135.f) textureRow = rowLeft * frameHeight;
         else if (moveAngle > -135.f && moveAngle <= -45.f) textureRow = rowUp * frameHeight;
+    }
+}
+
+void Player::autoPlayLogic(float deltaTime, const GameState& gameState, const std::vector<Item>& items, const std::vector<Enemy>& enemies) {
+    if (isDead) return;
+    
+    currentMovement = sf::Vector2f(0.f, 0.f);
+    isMoving = false;
+    
+    sf::Vector2f playerCenter = getCenterPosition();
+    
+    if (wanderTimer > 0.f) {
+        wanderTimer -= deltaTime;
+        currentMovement = wanderDir * speed;
+        isMoving = true;
+        
+        float moveAngle = std::atan2(wanderDir.y, wanderDir.x) * 180.f / 3.14159265f;
+        if (moveAngle > -45.f && moveAngle <= 45.f) textureRow = rowRight * frameHeight;
+        else if (moveAngle > 45.f && moveAngle <= 135.f) textureRow = rowDown * frameHeight;
+        else if (moveAngle > 135.f || moveAngle <= -135.f) textureRow = rowLeft * frameHeight;
+        else if (moveAngle > -135.f && moveAngle <= -45.f) textureRow = rowUp * frameHeight;
+        return;
+    }
+    
+    if (std::abs(playerCenter.x - lastPos.x) < 1.f && std::abs(playerCenter.y - lastPos.y) < 1.f) {
+        stuckTimer += deltaTime;
+        if (stuckTimer > 0.5f) {
+            stuckTimer = 0.f;
+            wanderTimer = 1.0f;
+            float randomAngle = (rand() % 360) * 3.14159f / 180.f;
+            wanderDir = sf::Vector2f(std::cos(randomAngle), std::sin(randomAngle));
+            lastPos = playerCenter;
+            return;
+        }
+    } else {
+        stuckTimer = 0.f;
+        lastPos = playerCenter;
+    }
+
+    sf::Vector2f target = playerCenter;
+    bool hasTarget = false;
+    float minTargetDist = 99999.f;
+    bool isEnemyTarget = false;
+    
+    // Check enemies first (aggro range 200)
+    for (const Enemy& enemy : enemies) {
+        if (!enemy.isAlive()) continue;
+        sf::Vector2f enemyPos = enemy.getCenterPosition();
+        float dist = std::sqrt(std::pow(playerCenter.x - enemyPos.x, 2) + std::pow(playerCenter.y - enemyPos.y, 2));
+        if (dist < 200.f && dist < minTargetDist) {
+            minTargetDist = dist;
+            target = enemyPos;
+            hasTarget = true;
+            isEnemyTarget = true;
+        }
+    }
+    
+    // Check items if no close enemies
+    if (!hasTarget) {
+        for (const Item& item : items) {
+            if (item.isCollected()) continue;
+            sf::Vector2f itemPos(item.getBounds().left + item.getBounds().width / 2.f, 
+                                 item.getBounds().top + item.getBounds().height / 2.f);
+            float dist = std::sqrt(std::pow(playerCenter.x - itemPos.x, 2) + std::pow(playerCenter.y - itemPos.y, 2));
+            if (dist < minTargetDist) {
+                minTargetDist = dist;
+                target = itemPos;
+                hasTarget = true;
+                isEnemyTarget = false;
+            }
+        }
+    }
+    
+    // If no items/enemies, go to gate if keys=3
+    if (!hasTarget && keys >= 3 && !gameState.isGateOpen && gameState.currentLevel < gameState.maxLevel) {
+        target = sf::Vector2f(2500.f, 700.f);
+        hasTarget = true;
+    }
+    
+    if (hasTarget) {
+        sf::Vector2f dir = target - playerCenter;
+        float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+        
+        if (dist > 0.f) {
+            dir /= dist;
+            
+            if (isEnemyTarget && dist <= attackRange) {
+                // Attack!
+                targetPos = target;
+                aimDirection = dir;
+                attackIsMagic = false;
+                attack();
+                
+                float aimAngle = std::atan2(dir.y, dir.x) * 180.f / 3.14159265f;
+                if (aimAngle > -45.f && aimAngle <= 45.f) textureRow = rowRight * frameHeight;
+                else if (aimAngle > 45.f && aimAngle <= 135.f) textureRow = rowDown * frameHeight;
+                else if (aimAngle > 135.f || aimAngle <= -135.f) textureRow = rowLeft * frameHeight;
+                else if (aimAngle > -135.f && aimAngle <= -45.f) textureRow = rowUp * frameHeight;
+            } else {
+                // Move towards
+                currentMovement = dir * speed;
+                isMoving = true;
+                
+                float moveAngle = std::atan2(dir.y, dir.x) * 180.f / 3.14159265f;
+                if (moveAngle > -45.f && moveAngle <= 45.f) textureRow = rowRight * frameHeight;
+                else if (moveAngle > 45.f && moveAngle <= 135.f) textureRow = rowDown * frameHeight;
+                else if (moveAngle > 135.f || moveAngle <= -135.f) textureRow = rowLeft * frameHeight;
+                else if (moveAngle > -135.f && moveAngle <= -45.f) textureRow = rowUp * frameHeight;
+            }
+        }
     }
 }
 
@@ -333,17 +445,27 @@ void Player::addKey(int amount) {
     keys += amount;
 }
 
-void Player::increaseDamage(int amount) {
-    baseDamage += static_cast<float>(amount);
-}
-
-void Player::increaseArmor(int amount) {
-    armor += amount;
+void Player::clearKeys() {
+    keys = 0;
 }
 
 void Player::increaseMaxHp(int amount) {
     maxHp += amount;
-    heal(amount);
+    currentHp += amount;
+    powerUpsCollected++;
+    sprite.setColor(sf::Color(255, 255, 200)); // Visual change for PowerUp (Golden)
+}
+
+void Player::increaseArmor(int amount) {
+    armor += amount;
+    shieldsCollected++;
+    sprite.setColor(sf::Color(200, 200, 255)); // Visual change for Shield (Blueish)
+}
+
+void Player::increaseDamage(float amount) {
+    baseDamage += amount;
+    weaponsCollected++;
+    sprite.setColor(sf::Color(255, 200, 200)); // Visual change for Weapon (Reddish)
 }
 
 void Player::resetForNewGame(float startX, float startY) {

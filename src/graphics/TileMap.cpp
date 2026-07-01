@@ -1,7 +1,6 @@
-#include "TileMap.hpp"
+﻿#include "TileMap.hpp"
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 #include <json.hpp>
 
 using json = nlohmann::json;
@@ -9,6 +8,10 @@ using json = nlohmann::json;
 TileMap::TileMap() : width(0), height(0), tileSize(16) {}
 
 bool TileMap::loadFromJson(const std::string& filename) {
+    layers.clear();
+    tilesets.clear();
+    collisionObjects.clear();
+
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Erro ao abrir mapa JSON: " << filename << std::endl;
@@ -27,9 +30,11 @@ bool TileMap::loadFromJson(const std::string& filename) {
     height = mapData["height"];
     tileSize = mapData["tilewidth"];
 
-    // Diretório do arquivo json para montar caminhos relativos
-    std::filesystem::path mapPath(filename);
-    std::filesystem::path mapDir = mapPath.parent_path();
+    std::string mapDir;
+    std::size_t separator = filename.find_last_of("/\\");
+    if (separator != std::string::npos) {
+        mapDir = filename.substr(0, separator + 1);
+    }
 
     // Carregar os tilesets
     for (const auto& jTs : mapData["tilesets"]) {
@@ -37,9 +42,9 @@ bool TileMap::loadFromJson(const std::string& filename) {
         ts.firstGid = jTs["firstgid"];
         
         std::string imagePath = jTs["image"];
-        std::filesystem::path fullImagePath = mapDir / imagePath;
+        std::string fullImagePath = mapDir + imagePath;
         
-        if (!ts.texture.loadFromFile(fullImagePath.string())) {
+        if (!ts.texture.loadFromFile(fullImagePath)) {
             std::cerr << "Erro ao carregar textura do tileset: " << fullImagePath << std::endl;
         }
         

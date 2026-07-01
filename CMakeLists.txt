@@ -37,6 +37,9 @@ add_executable(CC_Rogue_Like_Game
         src/ui/VictoryScreen.cpp
         src/ui/AttributeMenu.cpp
         src/entities/npc/NPC.cpp
+        src/entities/npc/Companion.cpp
+        src/system/Ranking.cpp
+        src/ui/RankingScreen.cpp
 )
 
 # Adiciona o diretório de includes

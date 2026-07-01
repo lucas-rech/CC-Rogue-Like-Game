@@ -2,10 +2,16 @@
 #include <SFML/Graphics.hpp>
 
 #include <algorithm>
-#include <filesystem>
 #include <iostream>
 #include <vector>
 #include <cmath>
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 #include "entities/hero/Player.hpp"
 #include "entities/enemies/Enemy.hpp"
@@ -19,6 +25,9 @@
 #include "ui/VictoryScreen.hpp"
 #include "ui/AttributeMenu.hpp"
 #include "entities/npc/NPC.hpp"
+#include "entities/npc/Companion.hpp"
+#include "system/Ranking.hpp"
+#include "ui/RankingScreen.hpp"
 
 using namespace sf;
 
@@ -28,10 +37,22 @@ struct SpellEffect {
 };
 
 int main(int argc, char* argv[]) {
-    if (argc > 0) {
-        std::filesystem::path executablePath = std::filesystem::absolute(argv[0]);
-        std::filesystem::current_path(executablePath.parent_path());
+#ifdef _WIN32
+    wchar_t executablePath[MAX_PATH];
+    DWORD pathLength = GetModuleFileNameW(nullptr, executablePath, MAX_PATH);
+    if (pathLength > 0 && pathLength < MAX_PATH) {
+        for (DWORD i = pathLength; i > 0; --i) {
+            if (executablePath[i - 1] == L'\\' || executablePath[i - 1] == L'/') {
+                executablePath[i - 1] = L'\0';
+                SetCurrentDirectoryW(executablePath);
+                break;
+            }
+        }
     }
+#else
+    (void)argc;
+    (void)argv;
+#endif
 
     ContextSettings settings;
     settings.antialiasingLevel = 8;
@@ -43,13 +64,15 @@ int main(int argc, char* argv[]) {
     GameOverScreen gameOverScreen;
     VictoryScreen victoryScreen;
     AttributeMenu attributeMenu;
-    menu.loadFont();
-    hud.loadFont();
-    gameOverScreen.loadFont();
-    victoryScreen.loadFont();
-    attributeMenu.loadFont();
+    RankingScreen rankingScreen;
+
+    if (!menu.loadFont() || !hud.loadFont() || !gameOverScreen.loadFont() || !victoryScreen.loadFont() || !attributeMenu.loadFont() || !rankingScreen.loadFont()) {
+        return -1;
+    }
+    
     GameScreen currentScreen = GameScreen::Menu;
     bool showAttributeMenu = false;
+    bool isPaused = false;
 
     float viewWidth = 640.f;
     float viewHeight = 360.f;
@@ -57,6 +80,7 @@ int main(int argc, char* argv[]) {
     View view(FloatRect(0, 0, viewWidth, viewHeight));
     Clock gameClock;
     float movementScoreTimer = 0.f;
+    float farmTimer = 0.f;
 
     sf::RenderTexture fogTexture;
     bool fogReady = fogTexture.create(static_cast<unsigned int>(viewWidth), static_cast<unsigned int>(viewHeight));
@@ -137,6 +161,7 @@ int main(int argc, char* argv[]) {
     std::vector<SpellEffect> spellEffects;
 
     GameState gameState = {0};
+    gameState.maxLevel = 1;
     loadLevel(gameState, 1, player);
     gameState.stats.updateScore(gameState.currentLevel);
 
@@ -149,8 +174,18 @@ int main(int argc, char* argv[]) {
     std::vector<Trap> traps;
     spawnTraps(traps, gameState, player);
 
+    auto reloadStageContent = [&]() {
+        spawnEnemies(enemies, gameState, player);
+        spawnItems(items, gameState, player);
+        spawnTraps(traps, gameState, player);
+        spellEffects.clear();
+        movementScoreTimer = 0.f;
+    };
+
     std::vector<NPC> npcs;
-    npcs.reserve(10); // Evitar realocação que quebra o ponteiro de fonte do sf::Text
+    npcs.reserve(10); // Evitar realocacao que quebra o ponteiro de fonte do sf::Text
+    Companion companion(player.getPosition().x, player.getPosition().y);
+    companion.loadTexture();
     npcs.emplace_back(sf::Vector2f(2440.55f, 1508.95f));
     npcs[0].setFrameProperties(6, 64, 64);
     npcs[0].loadTexture("assets/textures/characters/slime/Without_shadow/idle.png");
@@ -186,21 +221,34 @@ int main(int argc, char* argv[]) {
     npcs[6].loadTexture("assets/textures/characters/slime/Without_shadow/idle.png");
     npcs[6].setDialog("Vejo que encontrou o Livro Antigo...\nAperte Espaco para usa-lo. Ele consome Mana, mas e devastador!");
 
-    auto resetGame = [&]() {
+    auto finalizeCampaign = [&](bool victory) {
+        if (!gameState.finalScoreCalculated) {
+            gameState.finalScore = calculateFinalCampaignScore(gameState, player.getCurrentHp(), victory);
+            gameState.finalScoreCalculated = true;
+            Ranking::saveScore(gameState);
+        }
+        gameState.campaignActive = false;
+    };
+
+    auto resetGame = [&](Difficulty difficulty, const std::string& playerName, bool autoPlay) {
         player.resetForNewGame(20.f * 16.f, 10.f * 16.f);
         loadPlayerVisuals();
         gameState = GameState{};
+        gameState.isAutoPlay = autoPlay;
+        gameState.difficulty = difficulty;
+        gameState.playerName = playerName.empty() ? "Jogador" : playerName;
+        gameState.campaignScore = 0;
+        gameState.completedLevels = 0;
+        gameState.maxLevel = 1;
+        gameState.campaignElapsedTime = 0.f;
+        gameState.campaignActive = true;
+        gameState.finalScoreCalculated = false;
         loadLevel(gameState, 1, player);
         gameState.isGameOver = false;
         gameState.isVictory = false;
-        gameState.isGateOpen = false;
-        gameState.playerInArena = false;
         gameState.stats.updateScore(gameState.currentLevel);
-        spawnEnemies(enemies, gameState, player);
-        spawnItems(items, gameState, player);
-        spawnTraps(traps, gameState, player);
-        spellEffects.clear();
-        movementScoreTimer = 0.f;
+        companion.setPosition(player.getPosition().x, player.getPosition().y);
+        reloadStageContent();
         currentScreen = GameScreen::Playing;
         gameClock.restart();
     };
@@ -210,22 +258,22 @@ int main(int argc, char* argv[]) {
         while (window.pollEvent(event)) {
             if (event.type == Event::Closed) window.close();
 
-            if (currentScreen == GameScreen::Menu) {
-                GameScreen selectedScreen = menu.handleEvent(event);
-                if (selectedScreen == GameScreen::Exit) {
+            if (currentScreen == GameScreen::Menu ||
+                currentScreen == GameScreen::PlayerName ||
+                currentScreen == GameScreen::DifficultySelect ||
+                currentScreen == GameScreen::HowToPlay ||
+                currentScreen == GameScreen::ItemsInfo ||
+                currentScreen == GameScreen::ScoreInfo ||
+                currentScreen == GameScreen::Ranking) {
+                
+                GameScreen nextScreen = menu.handleEvent(event, currentScreen);
+                if (nextScreen == GameScreen::Exit) {
                     window.close();
-                } else if (selectedScreen != GameScreen::Menu) {
-                    if (selectedScreen == GameScreen::Playing && (gameState.isGameOver || gameState.isVictory)) {
-                        resetGame();
-                    } else {
-                        currentScreen = selectedScreen;
-                    }
-                }
-            } else if (currentScreen == GameScreen::HowToPlay ||
-                       currentScreen == GameScreen::ItemsInfo ||
-                       currentScreen == GameScreen::ScoreInfo) {
-                if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape) {
-                    currentScreen = GameScreen::Menu;
+                } else if (nextScreen == GameScreen::Playing) {
+                    bool autoPlay = (menu.getPlayerName() == "AutoPlay-AI");
+                    resetGame(menu.getSelectedDifficulty(), menu.getPlayerName(), autoPlay);
+                } else {
+                    currentScreen = nextScreen;
                 }
             } else if (currentScreen == GameScreen::Playing) {
                 if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape) {
@@ -239,19 +287,33 @@ int main(int argc, char* argv[]) {
                         gameState.stats.registerPotionUsed(gameState.currentLevel);
                     }
                 } else if (event.type == Event::KeyPressed && event.key.code == Keyboard::E) {
-                    // Verificação para abrir o portão do castelo
+                    // Verificacao para abrir o portao do castelo
                     sf::Vector2f pPos = player.getCenterPosition();
                     if (!gameState.isGateOpen && pPos.y > 658.f && pPos.y < 750.f && pPos.x >= 2400.f && pPos.x <= 2700.f) {
                         if (player.getKeys() >= 3) {
-                            gameState.isGateOpen = true;
-                            player.setPosition(pPos.x - 32.f, 450.f); // Pula a parede fisica e avanca bem para dentro
-                            std::cout << "O Portao do Castelo foi aberto!\n";
+                            if (gameState.currentLevel < gameState.maxLevel) {
+                                const int nextLevel = gameState.currentLevel + 1;
+                                gameState.campaignScore += 500;
+                                gameState.completedLevels++;
+                                player.clearKeys();
+                                loadLevel(gameState, nextLevel, player);
+                                gameState.stats.updateScore(gameState.currentLevel);
+                                reloadStageContent();
+                                gameClock.restart();
+                                std::cout << "Avancando para a fase " << gameState.currentLevel << ".\n";
+                            } else {
+                                gameState.isGateOpen = true;
+                                player.setPosition(pPos.x - 32.f, 450.f);
+                                std::cout << "O Portao do Castelo foi aberto!\n";
+                            }
                         } else {
                             std::cout << "Voce precisa de todas as 3 chaves para abrir o portao.\n";
                         }
                     }
                 } else if (event.type == Event::KeyPressed && event.key.code == Keyboard::I) {
                     showAttributeMenu = !showAttributeMenu;
+                } else if (event.type == Event::KeyPressed && event.key.code == Keyboard::P) {
+                    isPaused = !isPaused;
                 } else if (event.type == Event::KeyPressed && showAttributeMenu) {
                     if (event.key.code == Keyboard::Num1) {
                         player.upgradeHealth();
@@ -265,7 +327,7 @@ int main(int argc, char* argv[]) {
                 }
             } else if (currentScreen == GameScreen::GameOver || currentScreen == GameScreen::Victory) {
                 if (event.type == Event::KeyPressed && event.key.code == Keyboard::R) {
-                    resetGame();
+                    resetGame(gameState.difficulty, gameState.playerName, gameState.isAutoPlay);
                 } else if (event.type == Event::KeyPressed && event.key.code == Keyboard::Escape) {
                     currentScreen = GameScreen::Menu;
                 } else if (event.type == Event::KeyPressed && event.key.code == Keyboard::Q) {
@@ -294,6 +356,10 @@ int main(int argc, char* argv[]) {
             currentSong = (currentSong + 1) % songs.size();
             std::cout << "[AUDIO] Musica parou. Trocando para o indice: " << currentSong << "\n";
             playSong();
+        } else if (currentScreen == GameScreen::Ranking) {
+            rankingScreen.draw(window);
+            window.display();
+            continue;
         }
 
         if (currentScreen != GameScreen::Playing) {
@@ -303,6 +369,29 @@ int main(int argc, char* argv[]) {
             menu.draw(window, currentScreen);
             window.display();
             continue;
+        }
+
+        if (isPaused) {
+            window.clear();
+            window.setView(view);
+
+            gameState.map.drawAll(window, RenderStates::Default);
+            drawItems(window, items);
+            drawTraps(window, traps);
+            drawEnemies(window, enemies);
+            for (auto& npc : npcs) window.draw(npc);
+            window.draw(companion);
+            window.draw(player);
+            gameState.map.drawForeground(window, RenderStates::Default);
+
+            sf::Text pauseText = hud.makeText("PAUSADO", view.getCenter().x - 40.f, view.getCenter().y - 20.f);
+            pauseText.setCharacterSize(36);
+            pauseText.setFillColor(sf::Color::Yellow);
+            window.draw(pauseText);
+
+            hud.draw(window, player, gameState);
+            window.display();
+            continue; // Skip all updates!
         }
 
         if (showAttributeMenu) {
@@ -319,6 +408,7 @@ int main(int argc, char* argv[]) {
                 if (enemy.isAlive() || !enemy.isDeadComplete()) window.draw(enemy);
             }
             window.draw(player);
+            window.draw(companion);
             for (const NPC& npc : npcs) {
                 window.draw(npc);
             }
@@ -332,9 +422,26 @@ int main(int argc, char* argv[]) {
         }
 
         float deltaTime = gameClock.restart().asSeconds();
+        if (gameState.campaignActive && !showAttributeMenu) {
+            gameState.campaignElapsedTime += deltaTime;
+        }
         movementScoreTimer += deltaTime;
+        if (movementScoreTimer >= 5.0f) {
+            gameState.stats.registerMovement(gameState.currentLevel);
+            movementScoreTimer = 0.f;
+        }
 
-        player.processInput(window);
+        farmTimer += deltaTime;
+        if (farmTimer >= 30.f) {
+            farmTimer = 0.f;
+            spawnRandomEnemy(enemies, gameState, player);
+        }
+
+        if (gameState.isAutoPlay) {
+            player.autoPlayLogic(deltaTime, gameState, items, enemies);
+        } else {
+            player.processInput(window);
+        }
 
         FloatRect intendedHitBox = player.getNextHitbox();
         bool canMove = !checkCollision(intendedHitBox, gameState);
@@ -342,11 +449,6 @@ int main(int argc, char* argv[]) {
         if (player.updateAndMove(canMove, deltaTime)) {
             sf::Vector2f pos = player.getPosition();
             std::cout << "Coordenadas do personagem: X=" << pos.x << ", Y=" << pos.y << std::endl;
-
-            if (movementScoreTimer >= 0.20f) {
-                gameState.stats.registerMovement(gameState.currentLevel);
-                movementScoreTimer = 0.f;
-            }
         }
 
         int newVisualLevel = std::min(player.getLevel(), 3);
@@ -368,8 +470,32 @@ int main(int argc, char* argv[]) {
 
         handlePlayerAttack(enemies, player, gameState);
         updateEnemies(enemies, player, gameState, deltaTime);
-        updateItems(items, player, gameState);
+
+        for (Enemy& enemy : enemies) {
+            if (enemy.isAlive()) {
+                float minDistance = 400.f;
+                sf::Vector2f targetItemPos(0, 0);
+
+                for (Item& item : items) {
+                    if (!item.isCollected() && item.getType() != ItemType::Key && item.getType() != ItemType::PowerUp && item.getType() != ItemType::SpellTome) {
+                        sf::FloatRect bounds = item.getBounds();
+                        sf::Vector2f itemPos(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+                        sf::Vector2f toItem = itemPos - enemy.getCenterPosition();
+                        float dist = std::sqrt(toItem.x * toItem.x + toItem.y * toItem.y);
+
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            targetItemPos = itemPos;
+                        }
+                    }
+                }
+                enemy.setTargetItemPos(targetItemPos);
+            }
+        }
+
+        updateItems(items, player, gameState, enemies);
         updateTraps(traps, player, gameState, deltaTime);
+        companion.update(deltaTime, player, items);
         for (auto& npc : npcs) {
             npc.update(deltaTime, player);
         }
@@ -396,9 +522,11 @@ int main(int argc, char* argv[]) {
         }
 
         if (player.getCurrentHp() <= 0 || gameState.isGameOver || gameState.isVictory) {
-            if (gameState.isGameOver) {
+            if (gameState.isGameOver || player.getCurrentHp() <= 0) {
+                finalizeCampaign(false);
                 currentScreen = GameScreen::GameOver;
             } else if (gameState.isVictory) {
+                finalizeCampaign(true);
                 currentScreen = GameScreen::Victory;
             }
             continue;
@@ -450,6 +578,7 @@ int main(int argc, char* argv[]) {
         for (auto& npc : npcs) {
             window.draw(npc);
         }
+        window.draw(companion);
         window.draw(player);
 
         gameState.map.drawForeground(window, RenderStates::Default);

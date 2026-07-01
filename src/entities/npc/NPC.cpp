@@ -1,7 +1,6 @@
-#include "NPC.hpp"
+﻿#include "NPC.hpp"
 #include "../hero/Player.hpp"
 #include <cmath>
-#include <filesystem>
 
 NPC::NPC(sf::Vector2f position) 
     : currentFrame(0), frameCount(4), frameWidth(64), frameHeight(64), 
@@ -21,7 +20,7 @@ NPC::NPC(sf::Vector2f position)
 
     bool fontLoaded = false;
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && font.loadFromFile(path)) {
+        if (font.loadFromFile(path)) {
             fontLoaded = true;
             break;
         }

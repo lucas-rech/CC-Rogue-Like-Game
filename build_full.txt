@@ -1,0 +1,16 @@
+﻿[ 15%] Built target sfml-system
+[ 34%] Built target sfml-audio
+[ 58%] Built target sfml-window
+[ 85%] Built target sfml-graphics
+[ 85%] Building CXX object CMakeFiles/CC_Rogue_Like_Game.dir/src/main.cpp.obj
+C:\Users\lucas\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe : mingw32-make[3]: *** 
+[CMakeFiles\CC_Rogue_Like_Game.dir\build.make:79: CMakeFiles/CC_Rogue_Like_Game.dir/src/main.cpp.obj] Error 1
+No linha:1 caractere:5
++ & { C:\Users\lucas\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (mingw32-make[3]...pp.obj] Error 1:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+mingw32-make[2]: *** [CMakeFiles\Makefile2:241: CMakeFiles/CC_Rogue_Like_Game.dir/all] Error 2
+mingw32-make[1]: *** [CMakeFiles\Makefile2:248: CMakeFiles/CC_Rogue_Like_Game.dir/rule] Error 2
+mingw32-make: *** [Makefile:188: CC_Rogue_Like_Game] Error 2

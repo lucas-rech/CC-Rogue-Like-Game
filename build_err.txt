@@ -1,0 +1,10 @@
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:79: CMakeFiles/CC_Rogue_Like_Game.dir/src/main.cpp.obj] Error 1
+mingw32-make[3]: *** Waiting for unfinished jobs....
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:94: CMakeFiles/CC_Rogue_Like_Game.dir/src/world/Level.cpp.obj] Error 1
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:124: CMakeFiles/CC_Rogue_Like_Game.dir/src/entities/hero/Player.cpp.obj] Error 1
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:139: CMakeFiles/CC_Rogue_Like_Game.dir/src/entities/enemies/Enemy.cpp.obj] Error 1
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:154: CMakeFiles/CC_Rogue_Like_Game.dir/src/items/Item.cpp.obj] Error 1
+mingw32-make[3]: *** [CMakeFiles\CC_Rogue_Like_Game.dir\build.make:169: CMakeFiles/CC_Rogue_Like_Game.dir/src/traps/Trap.cpp.obj] Error 1
+mingw32-make[2]: *** [CMakeFiles\Makefile2:241: CMakeFiles/CC_Rogue_Like_Game.dir/all] Error 2
+mingw32-make[1]: *** [CMakeFiles\Makefile2:248: CMakeFiles/CC_Rogue_Like_Game.dir/rule] Error 2
+mingw32-make: *** [Makefile:188: CC_Rogue_Like_Game] Error 2

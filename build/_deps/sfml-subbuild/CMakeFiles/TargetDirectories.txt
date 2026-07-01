@@ -1,0 +1,3 @@
+C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/CMakeFiles/sfml-populate.dir
+C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/CMakeFiles/edit_cache.dir
+C:/Users/Lucas/OneDrive - BnG MINING GROUP LLC/Área de Trabalho/Lucas/Pessoal/Roglike/CC-Rogue-Like-Game-develop/CC-Rogue-Like-Game-develop/build/_deps/sfml-subbuild/CMakeFiles/rebuild_cache.dir

@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <vector>
-#include <filesystem>
 
 HUD::HUD() : fontLoaded(false) {
 }
@@ -21,7 +20,7 @@ bool HUD::loadFont() {
     }
 
     for (const auto& path : fontPaths) {
-        if (std::filesystem::exists(path) && font.loadFromFile(path)) {
+        if (font.loadFromFile(path)) {
             fontLoaded = true;
             return true;
         }
@@ -39,7 +38,7 @@ void HUD::draw(sf::RenderWindow& window, const Player& player, const GameState& 
     sf::View oldView = window.getView();
     window.setView(window.getDefaultView());
 
-    sf::RectangleShape background(sf::Vector2f(300.f, 245.f));
+    sf::RectangleShape background(sf::Vector2f(340.f, 370.f));
     background.setPosition(12.f, 12.f);
     background.setFillColor(sf::Color(0, 0, 0, 150));
     background.setOutlineThickness(1.f);
@@ -53,17 +52,23 @@ void HUD::draw(sf::RenderWindow& window, const Player& player, const GameState& 
     }
 
     std::ostringstream text;
-    text << "Vida: " << player.getCurrentHp() << "/" << player.getMaxHp() << "\n"
+    text << "Jogador: " << gameState.playerName << "\n"
+         << "Vida: " << player.getCurrentHp() << "/" << player.getMaxHp() << "\n"
          << "Level: " << player.getLevel() << "\n"
          << "XP: " << player.getCurrentExp() << "/" << player.getMaxExp() << "\n"
          << "Mana: " << player.getCurrentMana() << "/" << player.getMaxMana() << "\n"
          << "Pocoes: " << player.getPotions() << "\n"
          << "Pocoes de Mana: " << player.getManaPotions() << "\n"
          << "Chaves: " << player.getKeys() << "\n"
+         << "Armas Coletadas: " << player.getWeaponsCollected() << "\n"
+         << "Escudos Coletados: " << player.getShieldsCollected() << "\n"
+         << "Power-ups: " << player.getPowerUpsCollected() << "\n"
          << "Dano: " << player.getDamage() << "\n"
          << "Armadura: " << player.getArmor() << "\n"
-         << "Pontuacao: " << gameState.stats.score << "\n"
-         << "Fase: " << gameState.currentLevel;
+         << "Pontuacao: " << gameState.campaignScore << "\n"
+         << "Tempo: " << formatCampaignTime(gameState.campaignElapsedTime) << "\n"
+         << "Fase: " << gameState.currentLevel << "/" << gameState.maxLevel << "\n"
+         << "Dificuldade: " << getDifficultyName(gameState.difficulty);
 
     window.draw(makeText(text.str(), 24.f, 22.f));
     window.setView(oldView);

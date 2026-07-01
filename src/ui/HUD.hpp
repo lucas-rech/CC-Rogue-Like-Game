@@ -12,10 +12,9 @@ public:
 
     bool loadFont();
     void draw(sf::RenderWindow& window, const Player& player, const GameState& gameState);
+    sf::Text makeText(const std::string& content, float x, float y) const;
 
 private:
     sf::Font font;
     bool fontLoaded;
-
-    sf::Text makeText(const std::string& content, float x, float y) const;
 };

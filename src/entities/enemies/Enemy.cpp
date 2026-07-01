@@ -1,7 +1,14 @@
 #include "Enemy.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <random>
+#include <iostream>
+
+#include "../../items/Item.hpp"
+#include "../../entities/hero/Player.hpp"
+#include "../../world/Level.hpp"
 
 namespace {
     std::mt19937& randomGenerator() {
@@ -22,8 +29,9 @@ namespace {
     }
 }
 
-Enemy::Enemy(EnemyType type, sf::Vector2f startPosition)
+Enemy::Enemy(EnemyType type, sf::Vector2f startPosition, Difficulty difficulty)
     : type(type),
+      difficulty(difficulty),
       currentHp(1),
       maxHp(1),
       damage(1),
@@ -115,6 +123,7 @@ bool Enemy::loadTextures(const std::string& idlePath,
 
 void Enemy::update(float deltaTime, Player& player, GameState& gameState) {
     attackTimer += deltaTime;
+    itemSearchTimer += deltaTime;
 
     if (!alive) {
         updateAnimation();
@@ -123,12 +132,28 @@ void Enemy::update(float deltaTime, Player& player, GameState& gameState) {
 
     if (isHurt || isAttacking) {
         updateAnimation();
-    } else if (canSeePlayer(player)) {
-        chasePlayer(deltaTime, player, gameState);
-        updateAnimation();
     } else {
-        moveRandom(deltaTime, gameState);
-        updateAnimation();
+        if (itemSearchTimer > 2.0f) {
+            itemSearchTimer = 0.f;
+            // 20% de chance de tentar pegar um item
+            if (static_cast<int>(randomGenerator()() % 100) < 20) {
+                chasingItem = true;
+            } else {
+                chasingItem = false;
+            }
+        }
+
+        if (chasingItem && targetItemPos != sf::Vector2f(0, 0) && chaseNearestItem(deltaTime, gameState, targetItemPos)) {
+            updateAnimation();
+        } else if (canSeePlayer(player)) {
+            chasingItem = false;
+            chasePlayer(deltaTime, player, gameState);
+            updateAnimation();
+        } else {
+            chasingItem = false;
+            moveRandom(deltaTime, gameState);
+            updateAnimation();
+        }
     }
 
     if (canAttackPlayer(player) && attackTimer >= attackCooldown && !isAttacking && !isHurt) {
@@ -183,6 +208,10 @@ EnemyType Enemy::getType() const {
     return type;
 }
 
+void Enemy::setTargetItemPos(sf::Vector2f pos) {
+    targetItemPos = pos;
+}
+
 bool Enemy::isDeadComplete() const {
     return isDeadAnimationComplete;
 }
@@ -197,10 +226,12 @@ sf::FloatRect Enemy::getHitbox() const {
 }
 
 void Enemy::setupStats() {
+    const DifficultyConfig& config = getDifficultyConfig(difficulty);
+
     switch (type) {
         case EnemyType::Goblin:
-            maxHp = 35;
-            damage = 5;
+            maxHp = config.goblin.maxHp;
+            damage = config.goblin.damage;
             expReward = 20;
             speed = 30.f;
             detectionRange = 180.f;
@@ -208,8 +239,8 @@ void Enemy::setupStats() {
             attackCooldown = 1.0f;
             break;
         case EnemyType::Orc:
-            maxHp = 60;
-            damage = 8;
+            maxHp = config.orc.maxHp;
+            damage = config.orc.damage;
             expReward = 35;
             speed = 24.f;
             detectionRange = 220.f;
@@ -217,8 +248,8 @@ void Enemy::setupStats() {
             attackCooldown = 1.2f;
             break;
         case EnemyType::Brute:
-            maxHp = 100;
-            damage = 14;
+            maxHp = config.brute.maxHp;
+            damage = config.brute.damage;
             expReward = 55;
             speed = 18.f;
             detectionRange = 260.f;
@@ -226,8 +257,8 @@ void Enemy::setupStats() {
             attackCooldown = 1.6f;
             break;
         case EnemyType::Boss:
-            maxHp = 500;
-            damage = 40;
+            maxHp = config.boss.maxHp;
+            damage = config.boss.damage;
             expReward = 1000;
             speed = 40.f;
             detectionRange = 1500.f; // huge range to chase player
@@ -278,6 +309,22 @@ void Enemy::chasePlayer(float deltaTime, const Player& player, const GameState& 
     isMoving = true;
     setFacingFromVector(movement);
     tryMove(movement, gameState);
+}
+
+bool Enemy::chaseNearestItem(float deltaTime, const GameState& gameState, const sf::Vector2f& itemPos) {
+    sf::Vector2f toItem = itemPos - getCenterPosition();
+    float distance = std::sqrt(toItem.x * toItem.x + toItem.y * toItem.y);
+
+    if (distance > 10.f) {
+        sf::Vector2f movement(toItem.x / distance * speed * deltaTime,
+                              toItem.y / distance * speed * deltaTime);
+        isMoving = true;
+        setFacingFromVector(movement);
+        tryMove(movement, gameState);
+    } else {
+        isMoving = false;
+    }
+    return true;
 }
 
 bool Enemy::canSeePlayer(const Player& player) const {
@@ -395,7 +442,15 @@ void Enemy::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 
 void spawnEnemies(std::vector<Enemy>& enemies, const GameState& gameState, const Player& player) {
     enemies.clear();
-    enemies.reserve(70);
+    const DifficultyConfig& config = getDifficultyConfig(gameState.difficulty);
+    enemies.reserve(21 + config.randomEnemyCount);
+
+    const std::array<std::array<sf::Vector2f, 2>, 3> hordeCenters{{
+        std::array<sf::Vector2f, 2>{sf::Vector2f{527.15f, 1462.45f}, sf::Vector2f{743.3f, 968.35f}},
+        std::array<sf::Vector2f, 2>{sf::Vector2f{1120.f, 1540.f}, sf::Vector2f{1840.f, 980.f}},
+        std::array<sf::Vector2f, 2>{sf::Vector2f{620.f, 520.f}, sf::Vector2f{2200.f, 1120.f}}
+    }};
+    const int levelIndex = std::max(1, std::min(gameState.currentLevel, gameState.maxLevel)) - 1;
 
     auto spawnHorde = [&](sf::Vector2f center, int count) {
         for (int i = 0; i < count; ++i) {
@@ -404,24 +459,23 @@ void spawnEnemies(std::vector<Enemy>& enemies, const GameState& gameState, const
             sf::Vector2f pos(center.x + offsetX, center.y + offsetY);
             
             EnemyType type = randomGenerator()() % 2 == 0 ? EnemyType::Orc : EnemyType::Brute;
-            enemies.emplace_back(type, pos);
+            enemies.emplace_back(type, pos, gameState.difficulty);
             enemies.back().loadTexture();
         }
     };
 
-    // Horde 1
-    spawnHorde({527.15f, 1462.45f}, 10);
-    // Horde 2 (SpellTome)
-    spawnHorde({743.3f, 968.35f}, 10);
+    spawnHorde(hordeCenters[levelIndex][0], 10);
+    spawnHorde(hordeCenters[levelIndex][1], 10);
 
-    // Boss Vampire
-    enemies.emplace_back(EnemyType::Boss, sf::Vector2f(2712.05f, 165.25f));
-    enemies.back().loadTexture();
+    if (gameState.currentLevel == gameState.maxLevel) {
+        enemies.emplace_back(EnemyType::Boss, sf::Vector2f(2712.05f, 165.25f), gameState.difficulty);
+        enemies.back().loadTexture();
+    }
 
     std::uniform_int_distribution<int> xDist(2, gameState.map.getWidth() - 3);
     std::uniform_int_distribution<int> yDist(2, gameState.map.getHeight() - 3);
 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < config.randomEnemyCount; ++i) {
         bool spawned = false;
         int attempts = 0;
         while (!spawned && attempts < 100) {
@@ -434,12 +488,44 @@ void spawnEnemies(std::vector<Enemy>& enemies, const GameState& gameState, const
                 EnemyType type = enemies.size() % 3 == 0 ? EnemyType::Goblin
                                : enemies.size() % 3 == 1 ? EnemyType::Orc
                                                          : EnemyType::Brute;
-                enemies.emplace_back(type, position);
+                enemies.emplace_back(type, position, gameState.difficulty);
                 enemies.back().loadTexture();
                 spawned = true;
             }
             attempts++;
         }
+    }
+}
+
+void spawnRandomEnemy(std::vector<Enemy>& enemies, const GameState& gameState, const Player& player) {
+    if (gameState.currentLevel == gameState.maxLevel && gameState.playerInArena) return; // Don't spawn in boss arena
+
+    std::uniform_int_distribution<int> xDist(2, gameState.map.getWidth() - 3);
+    std::uniform_int_distribution<int> yDist(2, gameState.map.getHeight() - 3);
+
+    std::mt19937 randGen(std::random_device{}());
+
+    bool spawned = false;
+    int attempts = 0;
+    while (!spawned && attempts < 50) {
+        int x = xDist(randGen);
+        int y = yDist(randGen);
+        sf::Vector2f pos(static_cast<float>(x * gameState.map.getTileSize()),
+                         static_cast<float>(y * gameState.map.getTileSize()));
+
+        bool farFromPlayer = (std::abs(pos.x - player.getCenterPosition().x) > 300.f ||
+                              std::abs(pos.y - player.getCenterPosition().y) > 300.f);
+
+        bool validPos = isValidSpawn(pos, gameState, player) && farFromPlayer;
+        if (validPos) {
+            Enemy enemy(EnemyType::Goblin, pos, gameState.difficulty);
+            if (enemy.loadTexture()) {
+                enemies.push_back(enemy);
+                spawned = true;
+                std::cout << "[FARM] Inimigo randomico gerado em " << pos.x << ", " << pos.y << "\n";
+            }
+        }
+        attempts++;
     }
 }
 
@@ -498,7 +584,8 @@ void handlePlayerAttack(std::vector<Enemy>& enemies, Player& player, GameState& 
         if (!enemy.isAlive()) {
             player.gainExp(enemy.getExpReward());
             gameState.stats.registerEnemyDefeated(enemy.getExpReward(), player.getLevel(), gameState.currentLevel);
-            if (enemy.getType() == EnemyType::Boss) {
+            gameState.campaignScore += 100;
+            if (enemy.getType() == EnemyType::Boss && gameState.currentLevel == gameState.maxLevel) {
                 gameState.isVictory = true;
             }
         }
