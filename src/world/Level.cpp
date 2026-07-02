@@ -13,17 +13,17 @@ using namespace sf;
 namespace {
     const DifficultyConfig easyConfig{
         25, 15, 15, 5,
-        {35, 5}, {60, 8}, {100, 14}, {500, 40}
+        {35, 5}, {60, 8}, {100, 14}, {200, 40}
     };
 
     const DifficultyConfig mediumConfig{
         34, 12, 12, 4,
-        {42, 6}, {72, 10}, {120, 17}, {600, 48}
+        {42, 6}, {72, 10}, {120, 17}, {350, 48}
     };
 
     const DifficultyConfig hardConfig{
         43, 9, 9, 3,
-        {49, 7}, {84, 11}, {140, 20}, {700, 56}
+        {49, 7}, {84, 11}, {140, 20}, {500, 56}
     };
 }
 

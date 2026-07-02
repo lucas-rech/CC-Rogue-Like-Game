@@ -262,7 +262,7 @@ void Enemy::setupStats() {
             expReward = 1000;
             speed = 40.f;
             detectionRange = 1500.f; // huge range to chase player
-            attackRange = 40.f;
+            attackRange = 30.f;
             attackCooldown = 0.8f;
             idleFrames = 4;
             walkFrames = 6;
@@ -315,7 +315,7 @@ bool Enemy::chaseNearestItem(float deltaTime, const GameState& gameState, const 
     sf::Vector2f toItem = itemPos - getCenterPosition();
     float distance = std::sqrt(toItem.x * toItem.x + toItem.y * toItem.y);
 
-    if (distance > 10.f) {
+    if (distance > 30.f) {
         sf::Vector2f movement(toItem.x / distance * speed * deltaTime,
                               toItem.y / distance * speed * deltaTime);
         isMoving = true;
